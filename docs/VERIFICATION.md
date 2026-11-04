@@ -146,7 +146,11 @@ hour, and ECMWF's past it (`STARS_FROM`), with no gust where that model gives no
 model is linear in u/v between its steps but never across a gap wider than twice its
 step. So `blend` scores HARMONIE where HARMONIE has the issue time's hour and ECMWF
 elsewhere; before the ruling it scored a weighted median of the others past HARMONIE's
-run (`blendSignature` changed with the rule, so the stored days were scored again). The fixture `force5/ingest/fixtures/blend-consensus.json`
+run (`blendSignature` changed with the rule, so the stored days were scored again). A
+rider may also pick the blend of every model as their headline (the ruling of 4
+November 2026, `BLEND_MODEL`); the replica works that choice out too (`blend_hour`,
+with copies of `STARS_MODELS` and `MODEL_WEIGHTS` the fixture holds to the
+TypeScript's), though `blend` still scores the default. The fixture `force5/ingest/fixtures/blend-consensus.json`
 holds the two together: `force5/src/consensusReplica.test.ts` checks that the TypeScript
 produces its `expected` values and `test_consensus.py` checks that the Python does. After
 changing the blend, regenerate it (`npx tsx force5/blend/consensus-fixture.ts`) and bring

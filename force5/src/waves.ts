@@ -71,11 +71,19 @@ export {
  * model is handed on to ECMWF (force5/src/lead.ts). A choice the list does
  * not know is no choice.
  */
+/**
+ * The wave blend as a choice of the waves' headline (force5/src/waveBlend.ts):
+ * the models' median height and period and their mean direction, with the
+ * partitions of the finest model that has the hour. Where no blend is
+ * published, the finest model at each hour stands in.
+ */
+export const WAVE_BLEND = "blend";
+
 export function waveLeadOrder(
   model: string | null | undefined,
   preference: readonly string[] = WAVE_SOURCE_PREFERENCE,
 ): string[] {
-  return model && preference.includes(model)
+  return model && model !== WAVE_BLEND && preference.includes(model)
     ? [model, ...preference.filter((id) => id !== model)]
     : [...preference];
 }

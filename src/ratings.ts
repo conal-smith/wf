@@ -12,13 +12,15 @@
  */
 import { agreementFrom, leadHours, type Agreement } from "../force5/src/blend";
 import {
+  BLEND_MODEL,
   DEFAULT_STARS_FROM,
-  leadOrder,
+  leadModels,
   pickModel,
   starsFromAt,
   type StarsFrom,
 } from "../force5/src/lead";
 import { modelSeries, spotSeries } from "../force5/src/series";
+import { blendHour, type BlendMember } from "../force5/src/windBlend";
 import { dayNights } from "../force5/src/sun";
 import { KNOTS } from "../force5/src/units";
 import { compass, direction, type Manifest } from "../force5/src/weather";
@@ -225,7 +227,10 @@ function vectorOn(
  * over past the end of its run (`from.then`), else nothing (force5/src/lead.ts).
  * `model` says which, hour by hour. The gust is that model's too, null where
  * it gives none: no other model fills it in. Those two are read from
- * `manifests` whether or not the reader has them in their blend.
+ * `manifests` whether or not the reader has them in their blend. A rider on
+ * the blend (`BLEND_MODEL`) has each hour the blend of every model in
+ * `STARS_MODELS` that `manifests` holds and that reaches it
+ * (force5/src/windBlend.ts), its gust the blend of the gusts they give.
  *
  * How far the models agree (`agreementFrom`, against the freshest run's lead)
  * is read across every model in `blendIds`, an ensemble as its member mean.
@@ -248,15 +253,22 @@ export function placeConsensus(
   const axisTimes = axis.map((iso) => Date.parse(iso));
   const axisKey = `${axis[0]}|${axis[axis.length - 1]}|${axis.length}`;
   const n = axis.length;
-  // The models that may rate an hour, each on its own deterministic series.
+  // The models that may rate an hour, each on its own deterministic series:
+  // the chosen one and the one after it, or for the blend every model.
   const own = new Map<string, Own>();
-  for (const model of leadOrder(from)) {
+  const runOf = new Map<string, { run: number; km: number | null }>();
+  for (const model of leadModels(from)) {
     const manifest = manifests.find((m) => m.model === model);
     const mean = manifest ? spotSeries(manifest, id) : null;
     if (!mean) continue;
     const plan = planFor(parsed(mean), axisTimes, axisKey);
     own.set(model, { ...lineOn(mean, plan), ...vectorOn(mean, plan) });
+    runOf.set(model, {
+      run: Date.parse(manifest!.runTime),
+      km: manifest!.resolutionKm ?? null,
+    });
   }
+  const blended = from.model === BLEND_MODEL;
   const lines: Line[] = [];
   for (const blendId of blendIds) {
     const manifest = manifests.find((m) => m.model === blendId);
@@ -323,6 +335,31 @@ export function placeConsensus(
           )
         : null,
     );
+    // The blend of every model that reaches the hour, where it is the choice.
+    if (blended) {
+      const members: BlendMember[] = [];
+      for (const [id, line] of own)
+        if (Number.isFinite(line.speed[c]))
+          members.push({
+            model: id,
+            speed: line.speed[c],
+            gust: Number.isFinite(line.gust[c]) ? line.gust[c] : null,
+            u: line.u[c],
+            v: line.v[c],
+            leadHours: leadHours(runOf.get(id)!.run, axisTimes[c]),
+            resolutionKm: runOf.get(id)!.km,
+          });
+      const b = blendHour(members);
+      out.model.push(b ? BLEND_MODEL : null);
+      out.median.push(b ? b.speed : null);
+      out.gust.push(b ? b.gust : null);
+      out.from.push(
+        b && Number.isFinite(b.u) && Number.isFinite(b.v) && Math.hypot(b.u, b.v) >= 0.1
+          ? direction(b.u, b.v)
+          : null,
+      );
+      continue;
+    }
     // The one model this hour is rated from.
     const model = pickModel(from, (m) => {
       const line = own.get(m);

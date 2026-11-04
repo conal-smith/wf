@@ -899,6 +899,19 @@ told apart side by side on both themes. The phone's band-name column is 68
 px, room for "Wind blend". The graph reaches every day the data does, to
 ECMWF's fifteen, the day cards with it.
 
+**2026-11-04 — Blend as a choice, for the wind and the waves.** The owner
+ruled that a rider may read the headline from the blend. Settings → Forecast
+offers **Blend** after the wind models, and **Blend** after "Finest at each
+hour" for the waves. A rider on the wind's blend has the wind, the gust, the
+direction and the stars from the weighted blend of every model, the very line
+the Wind blend row draws, so what they read is what they see; the map, which
+draws one model's frames, draws HARMONIE's and says so. A rider on the
+waves' blend has the median height, period and direction, with the swells of
+the finest model that has the hour, never averaged; where no wave blend is
+published, the finest model at each hour stands in. The defaults are
+unchanged: HARMONIE then ECMWF for the wind, the finest wave model at each
+hour for the waves, each blend drawn beside them.
+
 ---
 
 ## Still open

@@ -11,7 +11,8 @@ import math
 from pathlib import Path
 import unittest
 
-from consensus import (BLEND_MODELS, STARS_FROM, direction, lead_order,
+from consensus import (BLEND_MODEL, BLEND_MODELS, MODEL_WEIGHTS, STARS_FROM,
+                       STARS_MODELS, blend_hour, direction, lead_order,
                        place_consensus)
 
 FIXTURE = json.loads((Path(__file__).with_name("fixtures") / "blend-consensus.json").read_text())
@@ -51,6 +52,20 @@ class ReplicaTests(unittest.TestCase):
         self.assertIsNone(at["2026-09-13T11:00:00Z"])
         self.assertIsNotNone(at["2026-09-13T13:30:00Z"])
         self.assertIsNone(at["2026-09-14T02:00:00Z"])
+
+    def test_the_blend_reads_the_models_and_weights_the_typescript_does(self):
+        self.assertIn([BLEND_MODEL, BLEND_MODEL], FIXTURE["leads"])
+        self.assertEqual(list(STARS_MODELS), FIXTURE["starsModels"])
+        self.assertEqual({k: list(v) for k, v in MODEL_WEIGHTS.items()}, FIXTURE["modelWeights"])
+
+    def test_the_blend_weights_each_model_by_its_day_of_run(self):
+        b = blend_hour([
+            {"model": "harmonie", "speed": 10.0, "gust": 14.0, "u": 0.0, "v": -10.0, "lead_hours": 6},
+            {"model": "gfs", "speed": 16.0, "gust": None, "u": 0.0, "v": -16.0, "lead_hours": 50},
+        ])
+        self.assertAlmostEqual(b["speed"], (10 * 4 + 16 * 1) / 5)
+        self.assertAlmostEqual(b["gust"], 14.0)
+        self.assertIsNone(blend_hour([]))
 
     def test_the_default_is_harmonie_then_ecmwf(self):
         self.assertEqual(STARS_FROM, ("harmonie", "ecmwf"))

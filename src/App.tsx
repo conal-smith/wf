@@ -130,7 +130,13 @@ import {
 } from "../force5/src/manifests";
 import { WAVE_SOURCE_PREFERENCE } from "../force5/src/waves";
 import { runLabel } from "../force5/src/revalidate";
-import { chosenModel, leadText, starsFromAt } from "../force5/src/lead";
+import {
+  BLEND_MODEL,
+  chosenModel,
+  leadText,
+  mapModelOf,
+  starsFromAt,
+} from "../force5/src/lead";
 import {
   loadModel,
   MAP_MODEL_IDS,
@@ -412,7 +418,8 @@ export default function App() {
   const rider = prefs.rider;
   // The one model the rider picked: the map draws it, the scrub bar gives its wind
   // and the stars rate it, ECMWF past the end of its run (force5/src/lead.ts).
-  const riderModel = chosenModel(rider.starsFrom) as ModelId;
+  // A rider on the blend has the map draw the default model, which has frames.
+  const riderModel = mapModelOf(rider.starsFrom) as ModelId;
   const [manifest, setManifest] = useState<Manifest | null>(null);
   const [spots, setSpots] = useState<Spot[]>([]);
   const [frame, setFrame] = useState<Frame | null>(null);
@@ -994,6 +1001,8 @@ export default function App() {
    */
   const stayOn = (model: string) =>
     setPrefs((was) => {
+      // The blend is no model's frames: the map drawing another leaves it be.
+      if (chosenModel(was.rider.starsFrom) === BLEND_MODEL) return was;
       if (chosenModel(was.rider.starsFrom) === model) return was;
       const next = { ...was, rider: withRiderModel(was.rider, model) };
       savePrefs(next);
@@ -1004,7 +1013,7 @@ export default function App() {
    * stars alike, and the map moves to it (at `wanted`, where given).
    */
   const pickRiderModel = (id: ModelId, wanted?: string) => {
-    if (id !== riderModel)
+    if (id !== chosenModel(rider.starsFrom))
       changePrefs({ ...prefs, rider: withRiderModel(prefs.rider, id) });
     void chooseModel(id, wanted);
   };
@@ -2410,7 +2419,7 @@ export default function App() {
                   onPlace={setRiderAt}
                   onDrawn={onFinderDrawn}
                   onScreen={!onChart}
-                  model={riderModel}
+                  model={chosenModel(rider.starsFrom)}
                   onModel={onFinderModel}
                   stations={windObs?.stations ?? null}
                 />

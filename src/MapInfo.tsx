@@ -15,7 +15,7 @@ import { StarGlyphs } from "../ui/StarGlyphs";
 import { Wordmark } from "../ui/Wordmark";
 import { MODEL_CATALOG, modelHue } from "../force5/src/catalog";
 import { DEPTHS } from "../force5/src/chartStyle";
-import { leadOrder, type StarsFrom } from "../force5/src/lead";
+import { BLEND_MODEL, leadOrder, type StarsFrom } from "../force5/src/lead";
 import {
   SATELLITE_TIDES_NOTE,
   satelliteTidesLine,
@@ -601,11 +601,17 @@ function StarsPart({
         <Key mark={<span className="mi-dark" />} name="Hatched">
           The dark. Dark hours aren&rsquo;t rated.
         </Key>
-        <Key mark={<StarGlyph size={22} />} name="One model">
-          {then ? `${model}, then ${then} past the end of its run` : model}: the
-          model you picked, the one the map draws, and its own forecast, never a
-          blend.
-        </Key>
+        {starsFrom.model === BLEND_MODEL ? (
+          <Key mark={<StarGlyph size={22} />} name="The blend">
+            The blend you picked: every model&rsquo;s wind, each weighted by how
+            good it is that far ahead. The map draws HARMONIE.
+          </Key>
+        ) : (
+          <Key mark={<StarGlyph size={22} />} name="One model">
+            {then ? `${model}, then ${then} past the end of its run` : model}:
+            the model you picked, the one the map draws, and its own forecast.
+          </Key>
+        )}
       </ul>
       <h4>
         Rated for you <small>in Settings</small>

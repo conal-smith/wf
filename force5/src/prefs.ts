@@ -9,6 +9,7 @@ import {
 } from "./rideWedge";
 import { parseStarsChoice, withModel, type StarsChoice } from "./lead";
 import { modelEntry, waveModels, windModels } from "./manifests";
+import { WAVE_BLEND } from "./waves";
 import {
   DEFAULT_RIDER,
   MAX_WEIGHT_KG,
@@ -69,8 +70,9 @@ export interface Prefs {
   nightHours: NightHours;
   /**
    * The wave model the waves' headline is read from (force5/src/waves.ts
-   * `waveLeadOrder`), handed on to the others past the end of its run; null,
-   * the default, for the finest model at each hour. It moves no star.
+   * `waveLeadOrder`), handed on to the others past the end of its run, or the
+   * wave blend (`WAVE_BLEND`); null, the default, for the finest model at each
+   * hour. It moves no star.
    */
   waveModel: string | null;
   /**
@@ -400,10 +402,13 @@ export function loadPrefs(
   }
 }
 
-/** A stored wave model, kept while it is one the site publishes; else the default, null. */
+/**
+ * A stored wave model, kept while it is one the site publishes, or the wave
+ * blend (waves.ts `WAVE_BLEND`); else the default, null.
+ */
 export function parseWaveModel(value: unknown): string | null {
   return typeof value === "string" &&
-    waveModels().some((entry) => entry.id === value)
+    (value === WAVE_BLEND || waveModels().some((entry) => entry.id === value))
     ? value
     : null;
 }

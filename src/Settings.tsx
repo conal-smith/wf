@@ -37,8 +37,14 @@ import {
 } from "react";
 import { Moon, Sun } from "lucide-react";
 import { modelEntry, waveModels } from "../force5/src/catalog";
-import { waveLeadOrder } from "../force5/src/waves";
-import { FALLBACK_MODEL, STARS_MODELS, modelName } from "../force5/src/lead";
+import { WAVE_BLEND, waveLeadOrder } from "../force5/src/waves";
+import {
+  BLEND_MODEL,
+  DEFAULT_MODEL,
+  FALLBACK_MODEL,
+  STARS_CHOICES,
+  modelName,
+} from "../force5/src/lead";
 import {
   MODEL_CATALOG,
   modelHue,
@@ -1278,7 +1284,7 @@ function ForecastPart({
         <span className="st-kick">Model</span>
         <Segmented<string>
           aria-label="Model"
-          options={STARS_MODELS.map((id) => ({
+          options={STARS_CHOICES.map((id) => ({
             value: id,
             label: modelName(id),
           }))}
@@ -1286,10 +1292,13 @@ function ForecastPart({
           onChange={(model) => setDraft({ ...draft, model })}
         />
         <p className="st-note" data-model-detail>
-          {modelEntry(draft.model)?.detail}.{" "}
-          {draft.model === FALLBACK_MODEL
-            ? `The map, the wind and the stars are ${modelName(draft.model)}’s.`
-            : `The map, the wind and the stars are ${modelName(draft.model)}’s, and ${modelName(FALLBACK_MODEL)}’s past the end of its run.`}
+          {draft.model === BLEND_MODEL
+            ? `Every model, each weighted by how good it is that far ahead, to fifteen days. The wind and the stars are the blend’s; the map draws ${modelName(DEFAULT_MODEL)}.`
+            : `${modelEntry(draft.model)?.detail}. ${
+                draft.model === FALLBACK_MODEL
+                  ? `The map, the wind and the stars are ${modelName(draft.model)}’s.`
+                  : `The map, the wind and the stars are ${modelName(draft.model)}’s, and ${modelName(FALLBACK_MODEL)}’s past the end of its run.`
+              }`}
         </p>
       </div>
       <div className="st-row">
@@ -1309,6 +1318,7 @@ function ForecastPart({
           data-wave-model
         >
           <option value={FINEST_WAVES}>Finest at each hour</option>
+          <option value={WAVE_BLEND}>Blend</option>
           {waveChoices().map((entry) => (
             <option key={entry.id} value={entry.id}>
               {entry.name}
@@ -1316,7 +1326,9 @@ function ForecastPart({
           ))}
         </Select>
         <p className="st-note" data-wave-model-detail>
-          {draft.waveModel
+          {draft.waveModel === WAVE_BLEND
+            ? "The wave blend: the middle of every wave model’s height, period and direction at each hour, the swells the finest model’s. Where none is published, the finest model at each hour."
+            : draft.waveModel
             ? `${modelEntry(draft.waveModel)?.detail}. The waves are ${modelName(draft.waveModel)}’s, and the next model’s past the end of its run. The wave blend shows beside them.`
             : `The finest wave model that reaches each hour, then the next as its run ends: ${waveChoices()
                 .map((entry) => entry.name)

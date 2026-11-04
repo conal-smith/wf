@@ -12,7 +12,9 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { placeConsensus } from "../../src/ratings";
+import { STARS_MODELS } from "../src/lead";
 import { windModels } from "../src/manifests";
+import { MODEL_WEIGHTS } from "../src/weights";
 import type { Manifest } from "../src/weather";
 
 const path = new URL("../ingest/fixtures/blend-consensus.json", import.meta.url);
@@ -33,6 +35,10 @@ for (const [model, then] of fixture.leads as [string, string][]) {
   expected[`${model}>${then}`] = byPlace;
 }
 fixture.blendModels = windModels().map((entry) => entry.id);
+// What the blend as a choice reads (force5/src/windBlend.ts): its members and
+// their weights, so the replica's copies are held to them too.
+fixture.starsModels = STARS_MODELS;
+fixture.modelWeights = MODEL_WEIGHTS;
 fixture.expected = expected;
 writeFileSync(path, JSON.stringify(fixture, null, 1) + "\n");
 console.log(

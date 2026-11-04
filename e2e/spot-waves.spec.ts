@@ -1,4 +1,10 @@
-import { expect, test, type Page } from "./fixtures";
+import {
+  expect,
+  openFromMenu,
+  saveSettings,
+  test,
+  type Page,
+} from "./fixtures";
 import { MODELS, withWaves } from "./waveFixtures";
 
 /**
@@ -203,6 +209,49 @@ test("a rider's own wave model leads the waves, handed on past its run", async (
   await expect(page.locator("[data-wave-readout]")).not.toContainText("Swell 2 0");
   await expect(page.locator("[data-wave-legend]")).toContainText(
     "Wave height: GFS-Wave",
+  );
+});
+
+test("a rider who picks the blends in Settings reads the wind and the waves from them", async ({
+  page,
+}) => {
+  await withWaves(page);
+  await page.goto("/spot/brandon");
+  await expect(heading(page)).toBeVisible({ timeout: 30000 });
+  await openFromMenu(page, "Settings");
+  const settings = page.getByRole("dialog", { name: "Settings" });
+  await settings
+    .getByRole("group", { name: "Model", exact: true })
+    .getByRole("button", { name: "Blend" })
+    .click();
+  await expect(settings.locator("[data-model-detail]")).toContainText(
+    "the map draws HARMONIE",
+  );
+  await settings.getByLabel("Wave model").selectOption("blend");
+  await saveSettings(page);
+  await page.goto("/spot/brandon");
+  await expect(heading(page)).toBeVisible({ timeout: 30000 });
+  // An hour every model reaches: the headline wind is the blend's.
+  const graph = page.locator("[data-spot-graph]");
+  await graph.scrollIntoViewIfNeeded();
+  const box = (await graph.boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.3, box.y + 260);
+  const blendKey = page.locator('[data-models-legend] [data-model-key="blend"] b');
+  await expect(blendKey).toHaveText(/\d+/);
+  const wind = await page.locator("[data-readout-wind] b").textContent();
+  expect(wind).toMatch(new RegExp(`^${await blendKey.textContent()}\\b`));
+  // No "from here": the blend hands over to nothing.
+  await expect(page.locator("[data-graph-svg]")).not.toContainText("from here");
+  // The waves likewise, where the blend is published.
+  const waveKey = page.locator(
+    '[data-wave-models-legend] [data-model-key="blend"] b',
+  );
+  await expect(waveKey).toHaveText(/\d\.\d/);
+  await expect(
+    page.locator("[data-wave-readout] [data-readout-waves]"),
+  ).toContainText(`${await waveKey.textContent()} m`);
+  await expect(page.locator("[data-wave-legend]")).toContainText(
+    "Wave height: the blend",
   );
 });
 

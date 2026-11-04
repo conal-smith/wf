@@ -111,7 +111,7 @@ import {
 } from "./detail";
 import { useNearby, type NearbyReading } from "./nearby";
 import { ClimateSections, useSheltered } from "./ClimateSections";
-import { waveLeadOrder } from "../../../force5/src/waves";
+import { WAVE_BLEND, waveLeadOrder } from "../../../force5/src/waves";
 import {
   PART_ROWS,
   partOf,
@@ -536,8 +536,8 @@ export function SpotReport({
   // The models' blend, said in the Wind blend band alone: the headline wind
   // and the stars stay the one model's own.
   const blend = useMemo(
-    () => windBlend(models, forecast.sources.wind),
-    [models, forecast.sources.wind],
+    () => windBlend(rows),
+    [rows],
   );
   // The waves: one model's own at each hour, the rider's or the finest, with
   // the published wave blend beside them where it has the place (a point's
@@ -554,6 +554,7 @@ export function SpotReport({
         rows,
         waveBlend && waveFrom ? waveBlendHours(waveBlend, waveFrom.id) : null,
         waveLeadOrder(waveModel),
+        waveModel === WAVE_BLEND,
       ),
     [rows, waveBlend, waveFrom?.id, waveModel],
   );
@@ -1496,7 +1497,9 @@ const SHORT: Record<string, string> = {
 const shortName = (id: string) => SHORT[id] ?? modelName(id);
 /** A wave model's name, as Settings and the layers list give it. */
 const waveModelName = (id: string) =>
-  modelEntry(id)?.name ?? (id === "ibi-wave" ? "Copernicus IBI" : id);
+  id === WAVE_BLEND
+    ? "Blend"
+    : (modelEntry(id)?.name ?? (id === "ibi-wave" ? "Copernicus IBI" : id));
 /** Where a wave model's run is said to end, on its line: "Met Office ends". */
 const waveEndName = (id: string) => waveModelName(id).replace(/ Wave$/, "");
 
@@ -2842,9 +2845,11 @@ function Graph({
           <div className={s.legend()} data-wave-legend>
             <KeyGroup name="Waves">
               <KeyItem mark="sea">
-                {waveModel
-                  ? `Wave height: ${waveModelName(waveModel)}, and the next model past its run`
-                  : "Wave height: the finest model at each hour"}
+                {waveModel === WAVE_BLEND
+                  ? "Wave height: the blend, the finest model where it has none"
+                  : waveModel
+                    ? `Wave height: ${waveModelName(waveModel)}, and the next model past its run`
+                    : "Wave height: the finest model at each hour"}
               </KeyItem>
               {waves.lines.length > 1 && (
                 <KeyItem mark="spread">Where models disagree</KeyItem>

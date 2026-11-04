@@ -5,15 +5,14 @@
  * alone. The graph draws them; nothing here touches the stars, which stay
  * the one model's own (force5/src/lead.ts).
  */
-import { leadHours, modelWeight } from "../../../force5/src/weights";
 import {
+  WAVE_BLEND,
   WAVE_MATCH_HOURS,
   WAVE_SOURCE_PREFERENCE,
   type PartitionKey,
 } from "../../../force5/src/waves";
 import type { WaveBlendHour, WavePartHour } from "../../../force5/src/waveBlend";
 import type { ForecastHour } from "../../../mcp/api/forecast";
-import type { ModelSeries } from "./detail";
 
 const HOUR = 3600000;
 
@@ -30,40 +29,22 @@ export interface WindBlendAt {
 }
 
 /**
- * The wind blend at every row any of `models` reaches: each model's own wind
- * weighted as the chart's blend weights it (`modelWeight`, by how far into
- * its run the hour is), and the lowest and highest of them. `runs` gives each
- * model's run time; a model with none counts as on its first day.
+ * The wind blend at every row, as the forecast gives it (`blend_kn`: every
+ * model that reaches the hour, each weighted as the chart's blend weights it,
+ * force5/src/windBlend.ts), with the lowest and highest of the models. It is
+ * the blend a rider can pick to rate from (force5/src/lead.ts `BLEND_MODEL`),
+ * so the line drawn is the headline they would have.
  */
-export function windBlend(
-  models: readonly ModelSeries[],
-  runs: readonly { id: string; run_time: string }[],
-): Map<number, WindBlendAt> {
-  const runOf = new Map(runs.map((run) => [run.id, Date.parse(run.run_time)]));
-  const at = new Map<number, { kn: number; weight: number }[]>();
-  for (const m of models)
-    for (const p of m.points) {
-      const run = runOf.get(m.id);
-      const weight = modelWeight(
-        m.id,
-        run === undefined || !Number.isFinite(run) ? 0 : leadHours(run, p.time),
-      );
-      const list = at.get(p.time) ?? [];
-      list.push({ kn: p.kn, weight });
-      at.set(p.time, list);
-    }
+export function windBlend(rows: readonly WeekRow[]): Map<number, WindBlendAt> {
   const out = new Map<number, WindBlendAt>();
-  for (const [time, list] of at) {
-    const total = list.reduce((sum, v) => sum + v.weight, 0);
-    const kn =
-      total > 0
-        ? list.reduce((sum, v) => sum + v.kn * v.weight, 0) / total
-        : list.reduce((sum, v) => sum + v.kn, 0) / list.length;
-    out.set(time, {
-      kn,
-      low: Math.min(...list.map((v) => v.kn)),
-      high: Math.max(...list.map((v) => v.kn)),
-      count: list.length,
+  for (const row of rows) {
+    const wind = row.hour.wind;
+    if (wind?.blend_kn == null) continue;
+    out.set(row.time, {
+      kn: wind.blend_kn,
+      low: wind.min_kn,
+      high: wind.max_kn,
+      count: wind.models,
     });
   }
   return out;
@@ -79,7 +60,7 @@ export interface WaveRow {
   heightM: number | null;
   periodS: number | null;
   from: number | null;
-  /** The model the headline and its partitions are, or null. */
+  /** The model the headline and its partitions are, the blend, or null. */
   lead: string | null;
   parts: Partial<Record<PartitionKey, WavePartHour>>;
   /** The lowest and highest of the models: the spread band. */
@@ -139,6 +120,12 @@ export function waveWeek(
   rows: readonly WeekRow[],
   blend: readonly WaveBlendHour[] | null,
   order: readonly string[] = WAVE_SOURCE_PREFERENCE,
+  /**
+   * The rider reads the waves from the blend (`WAVE_BLEND`): where it has the
+   * hour it is the headline, the partitions those it carries (its lead
+   * model's); elsewhere `order`'s first model, as for anyone.
+   */
+  fromBlend = false,
 ): WaveWeek {
   const times = (blend ?? []).map((h) => Date.parse(h.time));
   const nearest = (time: number): WaveBlendHour | null => {
@@ -175,6 +162,22 @@ export function waveWeek(
         periodS: part.period_s,
         from: part.direction_deg,
       };
+    const range = {
+      lowM: b?.lowM ?? (heights.length ? Math.min(...heights) : null),
+      highM: b?.highM ?? (heights.length ? Math.max(...heights) : null),
+      count: b?.count ?? heights.length,
+      blendM: b?.heightM ?? null,
+      blendPeriodS: b?.periodS ?? null,
+    };
+    if (fromBlend && b)
+      return {
+        heightM: b.heightM,
+        periodS: b.periodS,
+        from: b.from,
+        lead: WAVE_BLEND,
+        parts: b.parts,
+        ...range,
+      };
     // A forecast without each model's own (an older server) has the one.
     const heightM = own ? own.height_m : (waves?.height_m ?? null);
     if (heightM === null && !b) return null;
@@ -184,11 +187,7 @@ export function waveWeek(
       from: own ? own.direction_deg : (waves?.direction_deg ?? null),
       lead,
       parts,
-      lowM: b?.lowM ?? (heights.length ? Math.min(...heights) : null),
-      highM: b?.highM ?? (heights.length ? Math.max(...heights) : null),
-      count: b?.count ?? heights.length,
-      blendM: b?.heightM ?? null,
-      blendPeriodS: b?.periodS ?? null,
+      ...range,
     };
   });
   const lines = ids.flatMap((id): WaveLine[] => {
