@@ -139,6 +139,15 @@ minutes = [15]
 timeout_seconds = 1800
 
 [[jobs]]
+id = "ibi-wave"
+models = ["ibi-wave"]
+hours = [2, 5, 8]           # Copernicus Marine's IBI waves: one run a day, whole once its
+minutes = [30]              # second half lands, due by 02:00 UTC (00:10 on 4 November).
+timeout_seconds = 1200      # 05:30 and 08:30 are retries, before the next run's first half
+                            # (~11:30) mixes the days again. A whole run is ~25 s and
+                            # ~0.4 GB of ARCO tiles. Needs COPERNICUSMARINE_SERVICE_USERNAME
+                            # and COPERNICUSMARINE_SERVICE_PASSWORD.
+[[jobs]]
 id = "currents"
 models = ["currents"]
 hours = [3, 7, 13]          # One ROMS run a day, its forecast files written by about

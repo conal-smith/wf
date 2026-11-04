@@ -141,6 +141,13 @@ MODELS = {
     # 10:15 (14:15 and 18:15 retry): about 34.5 h old when the next day's lands.
     "mi-swan": {"script": "fetch_mi_swan.py", "manifest": "weather/mi-swan.json",
                 "kind": "wave", "maxAgeHours": 36, "readsPublishedRun": True},
+    # Copernicus Marine's IBI waves (Météo-France MFWAM): one run a day, labelled by its
+    # first forecast day R, whole only once its second half lands by 02:00 UTC on R+1.
+    # Read at 02:30 (05:30 and 08:30 retry), the served run is about 26.5 h old when it
+    # lands and 50.5 h when the next day's replaces it; 55 h leaves the first retry, with
+    # an hour of queueing, before it reads as stale.
+    "ibi-wave": {"script": "fetch_ibi_wave.py", "manifest": "weather/ibi-wave.json",
+                 "kind": "wave", "maxAgeHours": 55, "readsPublishedRun": True},
     # Surface currents, tides included: one Marine Institute ROMS run a day, written
     # about 00:55 UTC on its model day, read at 03:20 (07:20 and 13:20 retry). The
     # served run is about 27.5 h old when the next day's lands; 36 h leaves the first
