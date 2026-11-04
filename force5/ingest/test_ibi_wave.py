@@ -1,13 +1,20 @@
 """Copernicus Marine IBI wave adapter tests, against recorded objects; no network access.
 
-fixtures/ibi-wave-20261104.json holds what the adapter read from the Marine Data
-Store for the run of 4 November 2026, recorded on 5 November: the catalogue, the
-day files' listing, the stores' consolidated metadata and coordinates, and the
-land-sea mask. The wave chunks themselves (about 90 MB) are not kept. The fake
-store makes them up, encoded with the store's own codec and packing, and puts back
-the real series of three spots' cells, so the values those spots publish are the
-model's own. fixtures/ibi-wave-listing-mixed-20261104.xml is the November listing
-between the two halves of a run, recorded on 4 November at 19:00 UTC.
+fixtures/ibi-wave-20261104.json holds what the adapter reads from the Marine Data
+Store, recorded on 4 November 2026 at 20:54 UTC: the catalogue, the November
+listing of the day files, the stores' consolidated metadata and coordinates, the
+land-sea mask, and the real series of three spots' cells for the 216 hours then
+published from 00 UTC that day. The wave chunks themselves (about 90 MB) are not
+kept: the fake store makes them up, packed with the store's own codec and scaling,
+and puts those three cells' real values back.
+
+At that hour the run of 4 November had published only its first half: its days 4-8
+November sat beside the run of 3 November's days 9-12, which is what the listing
+records and what the refusal is tested against. A whole run is the same objects
+with its second half landed as the run of 3 November's did, at 00:09 UTC the next
+day (`whole()`): days 9-13 November named R20261104 FC06-FC10, the store's time
+axis a day longer and its catalogue entry updated after them. Those 24 hours of the
+three cells are made up.
 """
 import base64
 from datetime import date, datetime, timedelta, timezone
@@ -31,15 +38,78 @@ from publish_s3 import validate_bundle
 from registry import MODELS, PUBLISHED_RUN_ENV, UNCHANGED_EXIT
 from runfixtures import read_whole
 
-FIXTURES = Path(__file__).with_name("fixtures")
-RECORDED = json.loads((FIXTURES / "ibi-wave-20261104.json").read_text())
-MIXED = (FIXTURES / "ibi-wave-listing-mixed-20261104.xml").read_text()
+FIXTURE = Path(__file__).with_name("fixtures") / "ibi-wave-20261104.json"
+RECORDED = json.loads(FIXTURE.read_text())
 RUN = date(2026, 11, 4)
 RUN_TIME = datetime(2026, 11, 4, tzinfo=timezone.utc)
-# When the recorded run was whole and newest: 03:00 UTC the day after it.
-NOW = datetime.fromisoformat(RECORDED["now"])
+# When the whole run is newest: 03:00 UTC the day after it.
+NOW = datetime(2026, 11, 5, 3, tzinfo=timezone.utc)
+RECORDED_AT = datetime.fromisoformat(RECORDED["now"])
 SERIES_STORE = re.compile(r"/geoChunked\.zarr/(\w+)/(\d+)\.(\d+)\.(\d+)$")
 DEPTH = re.compile(r"/static\.zarr/deptho/0\.0$")
+EPOCH = datetime(1950, 1, 1, tzinfo=timezone.utc)
+# The second half's day files and the store's update after them, as on 4 November.
+SECOND_HALF = datetime(2026, 11, 5, 0, 9, 22, tzinfo=timezone.utc)
+UPDATED = "2026-11-05T00:12:11.000Z"
+
+
+def url_ending(objects, tail):
+    return next(url for url in objects if url.endswith(tail))
+
+
+def listing_url(objects):
+    return next(url for url in objects if "list-type=2" in url)
+
+
+def text_of(entry):
+    return entry["text"] if "text" in entry else base64.b64decode(entry["base64"]).decode()
+
+
+def whole():
+    """The recorded objects with the run's second half landed (see the module notes)."""
+    objects = dict(RECORDED["objects"])
+    url = listing_url(objects)
+    listing = text_of(objects[url])
+    days = re.findall(r"<Contents><Key>([^<]*_(\d{8})_\d{8}_R20261103_FC(\d{2})\.nc)</Key>"
+                      r"<LastModified>[^<]*</LastModified>", listing)
+    for key, day, number in days:
+        renamed = key.replace("R20261103_FC" + number, f"R20261104_FC{int(number) - 1:02d}")
+        listing = re.sub(re.escape(key) + r"</Key><LastModified>[^<]*",
+                         renamed + "</Key><LastModified>"
+                         + SECOND_HALF.strftime("%Y-%m-%dT%H:%M:%S.000Z"), listing)
+    last = days[-1][0].replace("20261112_20261112_R20261103_FC10",
+                               "20261113_20261113_R20261104_FC10")
+    entry = (f"<Contents><Key>{last}</Key><LastModified>"
+             f"{SECOND_HALF.strftime('%Y-%m-%dT%H:%M:%S.000Z')}</LastModified></Contents>")
+    listing = listing.replace("</ListBucketResult>", entry + "</ListBucketResult>")
+    objects[url] = {"status": 200, "text": listing}
+    item = url_ending(objects, f"{DATASET}_202411/dataset.stac.json")
+    document = json.loads(objects[item]["text"])
+    document["properties"]["admp_updated_data"] = UPDATED
+    objects[item] = {"status": 200, "text": json.dumps(document)}
+    # The time axis, a day longer.
+    meta_url = url_ending(objects, "geoChunked.zarr/.zmetadata")
+    meta = json.loads(objects[meta_url]["text"])
+    for key, layout in meta["metadata"].items():
+        if key.endswith("/.zarray") and layout["shape"] and len(layout["shape"]) in (1, 3) \
+                and (key == "time/.zarray" or len(layout["shape"]) == 3):
+            layout["shape"][0] += 24
+    objects[meta_url] = {"status": 200, "text": json.dumps(meta)}
+    layout = meta["metadata"]["time/.zarray"]
+    codec = numcodecs.get_codec(layout["compressor"])
+    last_chunk = (layout["shape"][0] - 1) // layout["chunks"][0]
+    chunk_url = url_ending(objects, f"geoChunked.zarr/time/{last_chunk}")
+    values = np.frombuffer(codec.decode(base64.b64decode(objects[chunk_url]["base64"])),
+                           dtype=layout["dtype"]).copy()
+    first = last_chunk * layout["chunks"][0]
+    filled = layout["shape"][0] - first
+    values[:filled] = values[0] + np.arange(filled)
+    objects[chunk_url] = {"status": 200, "base64": base64.b64encode(
+        codec.encode(values.tobytes())).decode()}
+    return objects
+
+
+WHOLE = whole()
 
 
 class Response:
@@ -51,35 +121,25 @@ class Response:
             raise RuntimeError(f"HTTP {self.status_code}")
 
 
-def synthetic(name, hours):
-    """A plausible sea everywhere, in the source's units, before packing."""
-    t = np.arange(hours, dtype=float)
-    kind = {"VHM0": 1.5 + 0.5 * np.sin(t / 10), "VTPK": 11 + 0 * t, "VTM02": 7 + 0 * t,
-            "VMDR": 275 + 0 * t, "VHM0_WW": 0.4 + 0 * t, "VTM01_WW": 3.5 + 0 * t,
-            "VMDR_WW": 200 + 0 * t, "VHM0_SW1": 1.2 + 0 * t, "VTM01_SW1": 10 + 0 * t,
-            "VMDR_SW1": 280 + 0 * t, "VHM0_SW2": 0.3 + 0 * t, "VTM01_SW2": 6 + 0 * t,
-            "VMDR_SW2": 320 + 0 * t}[name]
-    return kind
+# A plausible sea everywhere, in the source's units, before packing.
+SYNTHETIC = {"VHM0": 1.5, "VTPK": 11.0, "VTM02": 7.0, "VMDR": 275.0, "VHM0_WW": 0.4,
+             "VTM01_WW": 3.5, "VMDR_WW": 200.0, "VHM0_SW1": 1.2, "VTM01_SW1": 10.0,
+             "VMDR_SW1": 280.0, "VHM0_SW2": 0.3, "VTM01_SW2": 6.0, "VMDR_SW2": 320.0}
 
 
 class FakeStore:
     """The recorded objects, and wave chunks made up on the store's own terms."""
 
-    def __init__(self, objects=None, changes=None, holes=()):
-        self.objects = dict(RECORDED["objects"] if objects is None else objects)
-        self.changes = changes or {}
+    def __init__(self, objects=None, holes=()):
+        self.objects = dict(WHOLE if objects is None else objects)
         self.holes = set(holes)  # (spot, source variable, hour): a value the store lacks
         self.requests = []
-        meta = json.loads(next(entry["text"] for url, entry in self.objects.items()
-                               if url.endswith("geoChunked.zarr/.zmetadata")))["metadata"]
-        self.meta = meta
+        self.meta = json.loads(self.objects[url_ending(
+            self.objects, "geoChunked.zarr/.zmetadata")]["text"])["metadata"]
         self.cache = {}
 
     def get(self, url, timeout=None, headers=None):
         self.requests.append(url)
-        if url in self.changes:
-            body = self.changes[url]
-            return Response(200, body if isinstance(body, bytes) else body.encode())
         match = SERIES_STORE.search(url)
         if match and match.group(1) in SOURCE_VARIABLES:
             return Response(200, self.chunk(match.group(1), *map(int, match.groups()[1:])))
@@ -92,22 +152,30 @@ class FakeStore:
                 else base64.b64decode(entry["base64"]))
         return Response(entry["status"], body)
 
+    def first_hour(self):
+        layout = self.meta["time/.zarray"]
+        entry = self.objects[url_ending(self.objects, "geoChunked.zarr/time/0")]
+        raw = numcodecs.get_codec(layout["compressor"]).decode(base64.b64decode(entry["base64"]))
+        return int(np.frombuffer(raw, dtype=layout["dtype"])[0])
+
     def chunk(self, name, t, y, x):
         layout, attributes = self.meta[f"{name}/.zarray"], self.meta[f"{name}/.zattrs"]
         steps, rows, columns = layout["chunks"]
-        epoch = datetime(1950, 1, 1, tzinfo=timezone.utc)
-        run_index = int((RUN_TIME - epoch).total_seconds() // 3600) - first_hour(self.meta)
-        values = np.empty((steps, rows, columns))
-        values[:] = synthetic(name, steps)[:, None, None]
+        run_index = int((RUN_TIME - EPOCH).total_seconds() // 3600) - self.first_hour()
+        values = np.full((steps, rows, columns), SYNTHETIC[name])
+        values[:, :, :] += 0.2 * np.sin(np.arange(steps) / 10)[:, None, None]
         for spot, cell in RECORDED["cells"].items():
             if cell["row"] // rows != y or cell["column"] // columns != x:
                 continue
             for hour, value in enumerate(cell["values"][name]):
                 index = run_index + hour - t * steps
                 if 0 <= index < steps:
-                    missing = value is None or (spot, name, hour) in self.holes
                     values[index, cell["row"] % rows, cell["column"] % columns] = (
-                        np.nan if missing else value)
+                        np.nan if value is None else value)
+            for spot_id, variable, hour in self.holes:
+                index = run_index + hour - t * steps
+                if spot_id == spot and variable == name and 0 <= index < steps:
+                    values[index, cell["row"] % rows, cell["column"] % columns] = np.nan
         scale, offset = attributes.get("scale_factor", 1.0), attributes.get("add_offset", 0.0)
         packed = np.where(np.isnan(values), layout["fill_value"],
                           np.round((values - offset) / scale)).astype(layout["dtype"])
@@ -115,9 +183,8 @@ class FakeStore:
 
     def depth(self):
         if "depth" not in self.cache:
-            static = next(json.loads(entry["text"])["metadata"]
-                          for url, entry in self.objects.items()
-                          if url.endswith("static.zarr/.zmetadata"))
+            static = json.loads(self.objects[url_ending(
+                self.objects, "static.zarr/.zmetadata")]["text"])["metadata"]
             layout = static["deptho/.zarray"]
             values = np.full(layout["chunks"], 20.0, dtype=layout["dtype"])
             for cell in RECORDED["cells"].values():
@@ -127,43 +194,35 @@ class FakeStore:
         return self.cache["depth"]
 
 
-def first_hour(meta):
-    """Hours since 1950 at the store's first time step (its time axis is hourly)."""
-    times = [url for url in RECORDED["objects"] if url.endswith("geoChunked.zarr/time/0")]
-    entry = RECORDED["objects"][times[0]]
-    layout = meta["time/.zarray"]
-    raw = numcodecs.get_codec(layout["compressor"]).decode(base64.b64decode(entry["base64"]))
-    return int(np.frombuffer(raw, dtype=layout["dtype"])[0])
-
-
-def listing_url(objects):
-    return next(url for url in objects if "list-type=2" in url and "2026%2F11" in url)
-
-
 class ListingTests(unittest.TestCase):
     """Which run the day files say is whole."""
 
-    def files(self, xml):
-        store = FakeStore(changes={listing_url(RECORDED["objects"]): xml})
-        marine = Marine(session=store)
-        return marine.listing(marine.describe(NOW), ["2026/11"])
+    def files(self, objects, now):
+        marine = Marine(session=FakeStore(objects))
+        return marine.listing(marine.describe(now), months_to_list(now.date()))
 
-    def test_the_recorded_listing_names_the_whole_run_and_its_ten_days(self):
-        state = Marine(session=FakeStore()).describe(NOW)
-        files = Marine(session=FakeStore()).listing(state, months_to_list(NOW.date()))
-        run, days = complete_run(parse_listing(files))
+    def test_a_whole_run_is_its_ten_days_named_for_it(self):
+        run, days = complete_run(parse_listing(self.files(WHOLE, NOW)))
         self.assertEqual(run, RUN)
         self.assertEqual([entry["number"] for entry in days], list(range(1, 11)))
         self.assertTrue(days[0]["name"].endswith("_20261104_20261104_R20261104_FC01.nc"))
         self.assertTrue(days[-1]["name"].endswith("_20261113_20261113_R20261104_FC10.nc"))
 
     def test_between_the_halves_of_a_run_nothing_is_whole(self):
-        # 19:00 UTC on 4 November: the new run's first five days beside the last
-        # four of the day before's.
+        # As recorded: the new run's first five days beside the last four of the
+        # day before's.
+        files = self.files(RECORDED["objects"], RECORDED_AT)
+        self.assertEqual(len(files), 12)
         with self.assertRaisesRegex(ValueError, "more than one run") as caught:
-            complete_run(parse_listing(self.files(MIXED)))
+            complete_run(parse_listing(files))
         self.assertIn("08 Nov R20261104 FC05", str(caught.exception))
         self.assertIn("09 Nov R20261103 FC07", str(caught.exception))
+
+    def test_main_refuses_the_mixture_before_reading_any_wave(self):
+        store = FakeStore(RECORDED["objects"])
+        with self.assertRaisesRegex(ValueError, "more than one run"):
+            main([], marine=Marine(session=store), now=RECORDED_AT)
+        self.assertFalse([url for url in store.requests if SERIES_STORE.search(url)])
 
     def test_a_day_listed_twice_or_a_file_of_two_days_is_a_layout_change(self):
         one = {"name": "X_20261104_20261104_R20261104_FC01.nc", "modified": "2026-11-04T11:23:00Z"}
@@ -390,10 +449,11 @@ class AdapterTests(unittest.TestCase):
         original = store.get
 
         def updating_after_first_chunk(url, **kwargs):
-            if SERIES_STORE.search(url) and item not in store.changes:
+            if SERIES_STORE.search(url) and "changed" not in store.cache:
                 document = json.loads(store.objects[item]["text"])
                 document["properties"]["admp_updated_data"] = "2026-11-05T03:00:01.000Z"
-                store.changes[item] = json.dumps(document)
+                store.objects[item] = {"status": 200, "text": json.dumps(document)}
+                store.cache["changed"] = True
             return original(url, **kwargs)
 
         store.get = updating_after_first_chunk

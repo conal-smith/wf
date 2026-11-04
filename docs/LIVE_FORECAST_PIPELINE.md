@@ -346,8 +346,11 @@ partitions** (`swell1_*`, `swell2_*`, height, Tm01 period and direction).
   are read, each once, all thirteen variables for the run's hours: 43 tiles, 559
   requests and 80 MB on 4 November 2026 (the tiles' time chunk was a sixth full; each
   grows to about 0.8 MB as the 142-day chunk fills, so up to about 0.45 GB late in a
-  chunk), about 10 seconds, a 186 MB peak for the adapter in the image, and about
-  10 MB of squares (210 KB brotli for the largest). No cache is kept.
+  chunk), about 11 seconds and 3 CPU seconds, a 214 MB peak for the adapter natively
+  and 186 MB in the image, and about 9 MB of squares (210 KB brotli for the largest).
+  No cache is kept. Those figures are a read of the 216 hours of the 4 November run
+  that had been published by 19:00 UTC, before its second half landed; a whole run's
+  240 hours are still to be measured, and should differ by about a tenth.
 - **The dock.** It comes after the two shelf models: `WAVE_SOURCE_PREFERENCE` is
   `met-office-wave`, `mi-swan`, `ibi-wave`, `gfs-wave`, then `ecmwf-wave`, so the Met
   Office's 60 hours and SWAN's six days go on in IBI's ten, and GFS-Wave's and ECMWF's

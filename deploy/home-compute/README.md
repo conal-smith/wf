@@ -173,7 +173,7 @@ repository's `.venv` and a scratch `FORCE5_WORK_DIR`, never with a bucket:
 | `icon-eu-weather` | 512 MB | 225 | 13 | a cached run, 25 steps (three-hourly, as scheduled then; hourly since 24 October 2026 is 73 steps and not yet measured) |
 | `verify` | 512 MB | 225 | 23 | a 30-day archive made from today's archived runs |
 | `mi-swan` | 512 MB | 190 | 1 | a live run |
-| `ibi-wave` | 1 GB | IBI_PEAK | IBI_CPU | IBI_HOW |
+| `ibi-wave` | 1 GB | 290 | 3 | a live read of the 216 hours then published of the 4 November 2026 run (its second half had not landed), local output only; 186 MB for the adapter in the image. A whole 240-hour run is still to be measured |
 | `met-office-wave` | 1 GB | 390 | 5 | a live run, local output only (4 November 2026); in the image at a quarter of a CPU under a 1 GiB limit, 263 MB for the adapter and 47 for the worker |
 | `currents` | 512 MB | 240 | 4 | a live run (22 October 2026) |
 | `blend` | 512 MB | 185 | 0.4 | the site's current runs, read over public HTTPS; includes Node |
