@@ -6,5 +6,9 @@ requests>=2.31,<3
 # Every wind adapter writes a brotli sidecar beside each binary frame, so this is
 # needed by the fetch scripts themselves and not only by the worker's uploader.
 brotli>=1.1,<2
+# The IBI wave adapter (fetch_ibi_wave.py) decodes Copernicus Marine's zarr chunks
+# (blosc) with it: 4 MB, where the Copernicus Marine Toolbox would bring xarray,
+# dask, pandas and pyarrow, about 330 MB of the image.
+numcodecs>=0.15,<1
 # The Met Office wave model is published as NetCDF4 (HDF5) files.
 h5py>=3.12,<4

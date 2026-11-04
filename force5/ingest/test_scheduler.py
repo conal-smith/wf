@@ -187,7 +187,7 @@ class ShippedScheduleTest(unittest.TestCase):
         identities = [job["id"] for job in jobs]
         self.assertEqual(identities, ["harmonie", "icon-eu", "icon-eu-weather", "ecmwf",
                                       "harmonie-eps", "ecmwf-ens", "aifs", "gfs", "gefs", "arpege",
-                                      "arome", "gfs-wave", "gfs-weather", "mi-swan",
+                                      "arome", "gfs-wave", "gfs-weather", "mi-swan", "ibi-wave",
                                       "met-office-wave", "currents", "ecmwf-wave", "tides",
                                       "sea-temperature", "blend", "blend-after-harmonie", "wind-obs",
                                       "warnings", "water-quality", "forecast-archive",
@@ -259,6 +259,9 @@ class ShippedScheduleTest(unittest.TestCase):
             # The whole 384 h run, listed later than the wind's 240 h.
             "gfs-weather": ((0, 6, 12, 18), timedelta(hours=4, minutes=45)),
             "mi-swan": ((0,), timedelta(hours=9)),
+            # Copernicus Marine's IBI waves: a run is whole once its second half lands,
+            # due by 02:00 UTC the day after its run day.
+            "ibi-wave": ((0,), timedelta(hours=26)),
             # Every file of a run is listed within a minute, about 2 h 45 m after it.
             "met-office-wave": ((0, 6, 12, 18), timedelta(hours=2, minutes=45)),
             # ROMS writes the day's forecast files by about 00:55 UTC; ERDDAP's

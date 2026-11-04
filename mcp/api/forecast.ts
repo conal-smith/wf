@@ -149,6 +149,7 @@ export const WAVE_MODELS: readonly CatalogEntry[] = [
     manifestUrl: "weather/met-office-wave.json",
   },
   { id: "mi-swan", name: "MI SWAN", manifestUrl: "weather/mi-swan.json" },
+  { id: "ibi-wave", name: "IBI Wave", manifestUrl: "weather/ibi-wave.json" },
   { id: "gfs-wave", name: "GFS-Wave", manifestUrl: "weather/gfs-wave.json" },
   {
     id: "ecmwf-wave",

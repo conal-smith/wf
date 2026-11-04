@@ -52,6 +52,7 @@ DESCRIPTIONS = {
     "gfs-wave": "GFS-Wave (NOAA)",
     "gfs-weather": "GFS surface weather (NOAA)",
     "mi-swan": "Irish Shelf SWAN waves (Marine Institute)",
+    "ibi-wave": "IBI waves (Copernicus Marine, Météo-France MFWAM)",
     "met-office-wave": "North-West Shelf 1.5 km waves (Met Office)",
     "currents": "NE Atlantic ROMS surface currents (Marine Institute)",
     "tides": "Tide predictions (Marine Institute; Northern Ireland harmonic)",
@@ -100,6 +101,7 @@ UNMEASURED = {"cpu": "2", "memory": "4Gb", "disk": "12Gb"}
 ENSEMBLE = {"cpu": "2", "memory": "4Gb", "disk": "20Gb"}
 RESOURCES = {
     "harmonie": MODEL, "icon-eu": MODEL, "ecmwf": MODEL, "gfs-wave": MODEL,
+    "ibi-wave": MODEL,
     "ecmwf-wave": MODEL,
     # About 430 MB a run held in memory a file at a time, four files at once.
     "met-office-wave": MODEL,
@@ -120,7 +122,8 @@ RESOURCES = {
 # in the Linux image. HARMONIE and ICON-EU are full hourly runs decoded from cached
 # GRIB, ECMWF its whole 85-frame run from cache, verification a 30-day archive.
 # Currents were measured on 22 October 2026 the same way: 168 MB for the adapter;
-# the bathing water notices on 27 October 2026: 80 MB, most of it pyproj.
+# the bathing water notices on 27 October 2026: 80 MB, most of it pyproj; the IBI
+# waves on 4 November 2026 over 216 of a run's 240 hours: 214 MB for the adapter.
 # ECMWF waves were measured on 4 November 2026 in the worker image itself, a live
 # 85-step run under Cloudflare's basic limits (1/4 vCPU, 1 GiB), three times: up to
 # 276 MB for the adapter and 48 MB for the worker without a bucket. Its first run on
@@ -130,7 +133,7 @@ MEASURED_PEAK_MB = {
     "icon-eu-weather": 225, "gfs": 230, "verify": 225, "gfs-weather": 355,
     "mi-swan": 190, "currents": 240, "blend": 185, "forecast-archive": 140,
     "tides": 135, "sea-temperature": 135, "wind-obs": 135, "warnings": 135,
-    "water-quality": 155, "met-office-wave": 390,
+    "water-quality": 155, "ibi-wave": 290, "met-office-wave": 390,
     # Not yet measured in the image: the worker's 72 MB and the 148 MB peak of the
     # bundled force5/blend/waves.ts over a full-size synthetic run (GFS-Wave's ten
     # days and SWAN's six at every riding place), measured natively on 4 November 2026.

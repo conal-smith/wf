@@ -139,6 +139,15 @@ minutes = [15]
 timeout_seconds = 1800
 
 [[jobs]]
+id = "ibi-wave"
+models = ["ibi-wave"]
+hours = [2, 5, 8]           # Copernicus Marine's IBI waves: one run a day, whole once its
+minutes = [30]              # second half lands, due by 02:00 UTC (00:10 on 4 November).
+timeout_seconds = 1200      # 05:30 and 08:30 are retries that download nothing once 02:30
+                            # has published, before the next run's first half (~11:30)
+                            # mixes the days again. ~90 MB of ARCO tiles, ~15 s a run.
+
+[[jobs]]
 id = "met-office-wave"
 models = ["met-office-wave"]
 hours = [3, 9, 15, 21]      # 00/06/12/18 UTC cycles, each listed whole ~2 h 45 m after its

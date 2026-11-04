@@ -79,6 +79,7 @@ describe("model registry", () => {
       "gfs-wave",
       "met-office-wave",
       "mi-swan",
+      "ibi-wave",
       "icon-eu-weather",
       "gfs-weather",
       "ecmwf-wave",
@@ -88,8 +89,13 @@ describe("model registry", () => {
       "gfs-wave",
       "met-office-wave",
       "mi-swan",
+      "ibi-wave",
       "ecmwf-wave",
     ]);
+    // Copernicus Marine's licence asks for its own words and the product's DOI.
+    expect(requireModel("ibi-wave").credit).toContain(
+      "Generated using E.U. Copernicus Marine Service Information; https://doi.org/10.48670/moi-00025",
+    );
     expect(weatherModels().map((model) => model.id)).toEqual([
       "icon-eu-weather",
       "gfs-weather",

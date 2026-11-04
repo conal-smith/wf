@@ -183,6 +183,10 @@ test("the map's information is one dialog over the dimmed chart, from the menu's
   await expect(info.getByRole("tab", { name: "Currents" })).toBeFocused();
   await info.getByRole("tab", { name: "Sources & credits" }).click();
   await expect(info.getByRole("tabpanel")).toContainText("Not for navigation");
+  // Every wave model's licence credit, Copernicus Marine's in its own words.
+  await expect(info.getByRole("tabpanel")).toContainText(
+    "Generated using E.U. Copernicus Marine Service Information; https://doi.org/10.48670/moi-00025",
+  );
   // Modal, over a scrim: the page behind is dimmed and cannot be reached.
   expect(await info.evaluate((el) => el.matches(":modal"))).toBe(true);
   expect(
