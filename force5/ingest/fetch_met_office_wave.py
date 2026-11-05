@@ -22,6 +22,14 @@ closest wet cell whose four neighbours are wet too: on the model's coastline no
 wave arrives from the land side, so a coastline cell's direction points out to
 sea whatever the wind does (the same reasoning as fetch_mi_swan.py).
 
+What counts as wet. Land is the fill value, but a cell that is not fill need not
+hold waves: about 4,000 of the grid's cells, many of them on the Irish coast and
+the same cells run after run, are written as exactly zero at every hour, wind
+over them or not. Their depth does not tell them apart either: `wave_grid_depth`
+gives most of those near Ireland a depth of 1-8 m. So a cell is wet if a wave
+appears in it at some hour of the run. Height at the run hour alone will not do:
+about 200 real sea cells are calm at +0 and carry waves later.
+
 Licence. CC BY-SA 4.0: the per-spot series this publishes are adapted material,
 so they are offered under the same licence, with the Met Office credited and the
 changes stated in the manifest (`attribution`, `licenseUrl`, `processing`). The
@@ -69,6 +77,9 @@ FILE_HOURS = 24  # Each file holds one day of the run: +0, +24 and +48 h onwards
 MAX_AGE_HOURS = 12  # As the registry's maxAgeHours.
 LOOKBACK_CYCLES = 4
 SEARCH_KM = 8.0
+# The least height a cell must reach at some hour of the run to count as wet:
+# the smallest the published two decimals can tell from nothing.
+MIN_WAVE_M = 0.01
 CONCURRENCY = 4
 TIMEOUT = (15, 120)
 ATTEMPTS = 3
@@ -312,6 +323,17 @@ def read_cells(data, name, run, start, hours, cells, grid=None):
         return values
 
 
+def holds_waves(fields, decoding):
+    """The cells a wave reaches at some hour, from a run's packed height fields."""
+    wet = None
+    for field in fields:
+        water = (field != decoding["fill"] if decoding["fill"] is not None
+                 else np.isfinite(field))
+        here = water & (field * decoding["scale"] + decoding["offset"] >= MIN_WAVE_M)
+        wet = here if wet is None else wet | here
+    return wet
+
+
 def haversine_km(lat, lon, lats, lons):
     lat, lon = math.radians(lat), math.radians(lon)
     lats, lons = np.radians(lats), np.radians(lons)
@@ -364,14 +386,15 @@ def coverage_for(plan):
     if not plan["inside"]:
         note = "This location is outside the Met Office North-West Shelf wave model's domain."
     elif cell is None:
-        note = (f"No cell this 1.5 km wave model solved lies within {SEARCH_KM:g} km of this "
-                "location. It cannot say anything about waves here.")
+        note = (f"No cell of this 1.5 km wave model that holds waves lies within "
+                f"{SEARCH_KM:g} km of this location. It cannot say anything about waves here.")
     elif plan["ownWet"]:
         note = "This location sits in a cell the 1.5 km wave model solved."
     else:
-        note = (f"The 1.5 km cell over this location is land in the wave model, so the values "
-                f"come from the nearest cell it solved, {cell['offsetKm']:.1f} km away. They "
-                "describe the sea just off this beach, not the shorebreak.")
+        note = (f"The 1.5 km cell over this location is land in the wave model, or water no "
+                f"wave reaches in this run, so the values come from the nearest cell that holds "
+                f"waves, {cell['offsetKm']:.1f} km away. They describe the sea just off this "
+                "beach, not the shorebreak.")
     return {"landMasked": not plan["ownWet"], "resolved": cell is not None,
             "nearestOffsetKm": None if cell is None else cell["offsetKm"],
             "cellLat": None if cell is None else cell["lat"],
@@ -398,6 +421,24 @@ def series_for(plan, values, index, run, hours):
     return steps
 
 
+def check_series(series, coverage):
+    """Refuse a run that says something about a spot its cell cannot.
+
+    `holds_waves` should have kept every spot off a cell like these: reaching
+    one means that test has stopped working. Zero at every hour is a cell no
+    wave reaches, not a calm sea, and the forecast it would replace is better
+    than a flat one at a beach with surf on it."""
+    for spot, steps in series.items():
+        if not coverage[spot]["resolved"]:
+            continue
+        heights = [step["values"]["swh"] for step in steps]
+        if all(height is None for height in heights):
+            raise ValueError(f"{spot}: its cell holds waves but has no wave height at any hour")
+        if not any(heights):
+            raise ValueError(f"{spot}: reads zero at every hour, which is a cell no wave "
+                             "reaches and not a forecast")
+
+
 def describe(hours, coverage):
     resolved = sum(1 for entry in coverage.values() if entry["resolved"])
     masked = sum(1 for entry in coverage.values() if entry["resolved"] and entry["landMasked"])
@@ -408,12 +449,14 @@ def describe(hours, coverage):
         f"Met Office's NetCDF files on AWS. Hours 0-{hours}, every source hour, none "
         f"interpolated. Each value is the model's own at one grid cell, unpacked from its "
         f"integer encoding and rounded; nothing is resampled. {resolved} of {len(coverage)} "
-        f"locations have a solved cell within {SEARCH_KM:g} km; {masked} of them sit on a land "
-        f"cell and read the nearest solved one, its distance in `spotCoverage.nearestOffsetKm`. "
-        f"Directions (mwd, mdww, swell*_d) come from the nearest solved cell whose four "
-        f"neighbours are solved too, `spotCoverage.directionCell`, because a coastline cell "
-        f"hears nothing from the land side; {directed} locations have one within the limit, "
-        f"the rest publish null directions. Land and unresolved cells are null, never zero.")
+        f"locations have a cell holding waves within {SEARCH_KM:g} km; {masked} of them sit on a "
+        f"land cell, or one no wave reaches in the run, and read the nearest that holds waves, "
+        f"its distance in `spotCoverage.nearestOffsetKm`. Directions (mwd, mdww, swell*_d) come "
+        f"from the nearest such cell whose four neighbours hold waves too, "
+        f"`spotCoverage.directionCell`, because a coastline cell hears nothing from the land "
+        f"side; {directed} locations have one within the limit, the rest publish null "
+        f"directions. Land and unresolved cells are null, never zero; a cell the model writes as "
+        f"zero at every hour of the run is not read at all.")
 
 
 def manifest_for(run, now, hours, series, coverage, source):
@@ -471,16 +514,21 @@ def main(argv=None, now=None):
           f"+0..{args.hours} h", flush=True)
 
     spots = load_spots()
-    # The first file plans every spot: the grid and its wet cells at the run hour.
-    timing.start("download", workers=1)
-    first = ("wave_significant_height", 0)
-    data = get(f"{BUCKET_URL}/{files[first]}").content
+    # The height files plan every spot: the grid, and the cells a wave reaches
+    # at some hour of the run.
+    timing.start("download", workers=CONCURRENCY)
+    height_files = [item for item in files if item[0] == SOURCES["swh"][0]]
+    with ThreadPoolExecutor(max_workers=CONCURRENCY) as pool:
+        bodies = dict(zip(height_files, pool.map(
+            lambda item: get(f"{BUCKET_URL}/{files[item]}").content, height_files)))
     timing.start("decode")
-    handle, dataset, _, decoding = open_file(data, "swh", run, 0, args.hours)
-    with handle:
-        grid = grid_of(handle)
-        hour0 = dataset[0]
-        wet = hour0 != decoding["fill"] if decoding["fill"] is not None else np.isfinite(hour0)
+    grid, wet = None, None
+    for (_, start), body in bodies.items():
+        handle, dataset, expected, decoding = open_file(body, "swh", run, start, args.hours)
+        with handle:
+            grid = grid or grid_of(handle)
+            reached = holds_waves((dataset[i] for i in range(len(expected))), decoding)
+        wet = reached if wet is None else wet | reached
     plans = {spot["id"]: plan_spot(spot, *grid, wet) for spot in spots}
     cells = sorted({cell["flat"] for plan in plans.values()
                     for cell in (plan["cell"], plan["open"]) if cell})
@@ -490,7 +538,7 @@ def main(argv=None, now=None):
     def task(item):
         (parameter, start), key = item
         name = PARAMETERS[parameter]
-        body = data if item[0] == first else get(f"{BUCKET_URL}/{key}").content
+        body = bodies.get(item[0]) or get(f"{BUCKET_URL}/{key}").content
         with timing.phase("decode"):
             return name, read_cells(body, name, run, start, args.hours, cells, grid)
 
@@ -499,7 +547,7 @@ def main(argv=None, now=None):
     with ThreadPoolExecutor(max_workers=CONCURRENCY) as pool:
         for name, hours in pool.map(task, files.items()):
             values[name].update(hours)
-    del data
+    del bodies
     timing.start("decode")
     for name, hours in values.items():
         if sorted(hours) != list(range(args.hours + 1)):
@@ -507,11 +555,7 @@ def main(argv=None, now=None):
     series = {spot["id"]: series_for(plans[spot["id"]], values, index, run, args.hours)
               for spot in spots}
     coverage = {spot["id"]: coverage_for(plans[spot["id"]]) for spot in spots}
-    for spot in spots:
-        if coverage[spot["id"]]["resolved"] and all(
-                step["values"]["swh"] is None for step in series[spot["id"]]):
-            raise ValueError(f"{spot['id']}: its cell was wet at the run hour but has no wave "
-                             "height at any hour")
+    check_series(series, coverage)
     manifest = manifest_for(run, now, args.hours, series, coverage,
                             sorted(key.rsplit("/", 1)[1] for key in files.values()))
     output = ROOT / "public" / "weather"

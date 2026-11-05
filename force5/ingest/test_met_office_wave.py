@@ -7,6 +7,7 @@ int16 with a scale factor and -32767 for land. Only the grid is smaller.
 """
 from datetime import datetime, timedelta, timezone
 import io
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -16,7 +17,7 @@ import h5py
 import numpy as np
 
 import fetch_met_office_wave as wave
-from fetch_met_office_wave import FORECAST_HOURS, SOURCES, main
+from fetch_met_office_wave import FORECAST_HOURS, SOURCES, holds_waves, main
 from publish_s3 import validate_bundle
 from registry import MODELS, PUBLISHED_RUN_ENV, UNCHANGED_EXIT
 from runfixtures import read_whole, use_catalogue
@@ -35,8 +36,17 @@ SPOTS = [
     {"id": "inland", "name": "Inland lake", "lat": 52.2, "lon": LON0 + 29 * D_LON},
     # Inside the model's domain but not this small grid.
     {"id": "north", "name": "Far north", "lat": 60.0, "lon": -5.0},
+    # On a water cell no wave ever reaches, with real sea beside it.
+    {"id": "dead", "name": "Harbour", "lat": LAT0 + 30 * D_LAT, "lon": LON0 + 10 * D_LON},
+    # On a sea cell that is flat for the run's first hours.
+    {"id": "calm", "name": "Calm bay", "lat": LAT0 + 34 * D_LAT, "lon": LON0 + 5 * D_LON},
 ]
 COAST_DIRECTION = 135.0
+DEAD_CELL = (30, 10)
+CALM_CELL = (34, 5)
+CALM_UNTIL = 12  # Its first wave, in hours from the run.
+CELLS = json.loads((Path(__file__).parent / "fixtures/met-office-wave-cells-20261104.json")
+                   .read_text())
 
 
 def wet(row, column):
@@ -46,6 +56,9 @@ def wet(row, column):
 def value(name, hour, row, column):
     """Plausible, distinguishable numbers; the third swell is absent everywhere."""
     kind = SOURCES[name][3]
+    # The files write a cell no wave reaches as zero in every parameter.
+    if (row, column) == DEAD_CELL or ((row, column) == CALM_CELL and hour < CALM_UNTIL):
+        return 0.0
     if name.startswith("swell3"):
         return 0.0
     if kind == wave.HEIGHT:
@@ -229,6 +242,73 @@ class MetOfficeWaveTests(unittest.TestCase):
             self.assertTrue(all(value is None for step in manifest["spotSeries"][spot]
                                 for value in step["values"].values()))
 
+    def test_a_cell_no_wave_ever_reaches_gives_way_to_the_nearest_that_holds_waves(self):
+        manifest = self.run_main()
+        coverage = manifest["spotCoverage"]["dead"]
+        self.assertTrue(coverage["landMasked"])
+        self.assertTrue(coverage["resolved"])
+        self.assertGreater(coverage["nearestOffsetKm"], 1.0)
+        self.assertIn("water no wave reaches", coverage["note"])
+        self.assertNotEqual((coverage["cellLat"], coverage["cellLon"]),
+                            (round(LAT0 + 30 * D_LAT, 5), round(LON0 + 10 * D_LON, 5)))
+        self.assertTrue(all(step["values"]["swh"] > 0.9 and step["values"]["pp1d"]
+                            for step in manifest["spotSeries"]["dead"]))
+        self.assertTrue(all(step["values"]["mwd"] is not None
+                            for step in manifest["spotSeries"]["dead"]))
+
+    def test_a_dead_cell_is_no_neighbour_for_open_water(self):
+        coverage = self.run_main()["spotCoverage"]
+        cell = coverage["dead"]["directionCell"]
+        self.assertGreater(abs(cell["lat"] - (LAT0 + 30 * D_LAT))
+                           + abs(cell["lon"] - (LON0 + 10 * D_LON)), 0.01)
+
+    def test_a_sea_cell_calm_at_the_run_hour_stays_wet(self):
+        manifest = self.run_main()
+        coverage = manifest["spotCoverage"]["calm"]
+        self.assertFalse(coverage["landMasked"])
+        self.assertLess(coverage["nearestOffsetKm"], 0.1)
+        steps = manifest["spotSeries"]["calm"]
+        self.assertEqual(steps[0]["values"]["swh"], 0.0)
+        self.assertIsNone(steps[0]["values"]["pp1d"])
+        self.assertGreater(steps[CALM_UNTIL]["values"]["swh"], 1.0)
+
+    def test_a_wave_only_past_a_shorter_horizon_does_not_make_a_cell_wet(self):
+        manifest = self.run_main("--hours", str(CALM_UNTIL - 1))
+        coverage = manifest["spotCoverage"]["calm"]
+        self.assertTrue(coverage["landMasked"])
+        self.assertTrue(all(step["values"]["swh"] > 0.9
+                            for step in manifest["spotSeries"]["calm"]))
+
+    def test_water_no_wave_reaches_within_the_limit_publishes_nulls_with_a_reason(self):
+        plan = wave.plan_spot(SPOTS[0], LAT0 + D_LAT * np.arange(ROWS),
+                              LON0 + D_LON * np.arange(COLUMNS),
+                              np.zeros((ROWS, COLUMNS), dtype=bool))
+        coverage = wave.coverage_for(plan)
+        self.assertFalse(coverage["resolved"])
+        self.assertIn("that holds waves", coverage["note"])
+        hours = 2
+        series = wave.series_for(plan, {}, {}, self.run, hours)
+        self.assertTrue(all(value is None for step in series for value in step["values"].values()))
+        wave.check_series({"sea": series}, {"sea": coverage})
+
+    def test_a_spot_reading_zero_at_every_hour_stops_the_run(self):
+        steps = [{"values": {"swh": 0.0}}, {"values": {"swh": None}}, {"values": {"swh": 0.0}}]
+        coverage = {"beach": {"resolved": True}}
+        with self.assertRaisesRegex(ValueError, "beach: reads zero at every hour"):
+            wave.check_series({"beach": steps}, coverage)
+        calm = [*steps, {"values": {"swh": 0.01}}]
+        wave.check_series({"beach": calm}, coverage)
+        with self.assertRaisesRegex(ValueError, "no wave height at any hour"):
+            wave.check_series({"beach": [{"values": {"swh": None}}]}, coverage)
+
+    def test_the_guard_keeps_the_last_forecast_if_the_wet_test_ever_fails(self):
+        with patch("fetch_met_office_wave.holds_waves",
+                   side_effect=lambda fields, decoding: np.array(
+                       [next(iter(fields)) != FILL][0])):
+            with self.assertRaisesRegex(ValueError, "dead: reads zero at every hour"):
+                self.run_main()
+        self.assertFalse((self.root / "public/weather/met-office-wave.json").exists())
+
     def test_an_incomplete_newest_run_falls_back_to_the_one_before(self):
         bucket = FakeBucket()
         bucket.add_run(self.run - timedelta(hours=6))
@@ -288,6 +368,55 @@ class MetOfficeWaveTests(unittest.TestCase):
         for name, meta in wave.VARIABLES.items():
             self.assertRegex(name, r"^[a-z][a-z0-9_]{0,31}$")
             self.assertTrue(all(meta[key] for key in ("units", "label", "description")))
+
+
+class RealCellsTests(unittest.TestCase):
+    """The 18 UTC run of 4 November 2026, whose zeros first showed on the site."""
+
+    @staticmethod
+    def block(name):
+        place = CELLS["places"][name]
+        packed = np.array(place["packed"], dtype=np.int16)
+        decoding = {"fill": CELLS["fill"], "scale": CELLS["scale"], "offset": 0.0}
+        return (place, np.array(place["latitude"]), np.array(place["longitude"]),
+                packed, holds_waves(list(packed), decoding))
+
+    @staticmethod
+    def height_at(place, packed, plan):
+        columns = len(place["longitude"])
+        row, column = divmod(plan["cell"]["flat"], columns)
+        return packed[:, row, column] * CELLS["scale"]
+
+    def test_the_spots_first_read_as_flat_were_on_water_no_wave_reaches(self):
+        for name in ("tramore", "strandhill", "fi-lahinch-beach"):
+            place, latitudes, longitudes, packed, _ = self.block(name)
+            first_hour_only = packed[0] != CELLS["fill"]
+            plan = wave.plan_spot(place["spot"], latitudes, longitudes, first_hour_only)
+            self.assertEqual(self.height_at(place, packed, plan).max(), 0.0, name)
+
+    def test_each_now_reads_its_nearest_real_sea_cell(self):
+        reads = {"tramore": 1.36, "strandhill": 1.93, "fi-lahinch-beach": 4.40}
+        for name, offset in reads.items():
+            place, latitudes, longitudes, packed, wet = self.block(name)
+            plan = wave.plan_spot(place["spot"], latitudes, longitudes, wet)
+            self.assertEqual(plan["cell"]["offsetKm"], offset, name)
+            self.assertLessEqual(plan["cell"]["offsetKm"], wave.SEARCH_KM)
+            self.assertGreater(self.height_at(place, packed, plan).max(), 0.2, name)
+            self.assertIsNotNone(plan["open"], name)
+
+    def test_land_stays_land_and_a_real_calm_sea_cell_stays_wet(self):
+        place, _, _, packed, wet = self.block("calm-at-the-run-hour")
+        row, column = place["cell"]
+        self.assertEqual(packed[0, row, column], 0)
+        self.assertTrue(wet[row, column])
+        self.assertTrue(np.all(~wet[(packed == CELLS["fill"]).all(axis=0)]))
+
+    def test_a_cell_below_what_two_decimals_can_show_never_holds_a_wave(self):
+        decoding = {"fill": FILL, "scale": 0.002, "offset": 0.0}
+        fields = [np.array([[0, 4, 5, FILL]], dtype=np.int16),
+                  np.array([[0, 1, 0, FILL]], dtype=np.int16)]
+        self.assertEqual(holds_waves(fields, decoding).tolist(),
+                         [[False, False, True, False]])
 
 
 if __name__ == "__main__":

@@ -561,6 +561,15 @@ model the site reads, so the dock and the forecast server take it first for its
   coastline cell hears nothing from the land side (as MI SWAN). On the 12 UTC run of
   4 November 2026, 144 of 149 places had a cell; the five without are the inland lakes
   (Lough Derg twice, Lough Neagh twice, Blessington).
+- **Wet means a wave reaches it.** Land is the fill value, but about 4,000 cells that
+  are not fill hold exactly zero at every hour of every run (4,085 and 4,094 on the
+  18 and 12 UTC runs of 4 November 2026, 4,082 of them the same), with wind over them,
+  and 17 riding places were first read from one of them, as a flat sea at Strandhill
+  and Tramore. So a cell is wet only if its height reaches 0.01 m at some hour of the
+  run. `wave_grid_depth` does not settle it: it gives 11 of those 17 cells a depth of
+  1-8 m. Nor does the run hour alone: about 200 sea cells are calm at +0 and carry
+  waves later. A spot that still reads zero at every hour stops the run rather than
+  publish as a forecast (`check_series`).
 - **Schedule.** 03, 09, 15 and 21 UTC at :00, with a :55 retry that stops at once
   when :00 has published (`deploy/local/jobs.toml`). Registry age limit 12 h.
 - **Measured** on the 12 UTC run of 4 November 2026, in the worker image at a quarter
