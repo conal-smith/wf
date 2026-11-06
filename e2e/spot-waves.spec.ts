@@ -352,6 +352,7 @@ test("sheltered water has no Waves section, as it has no waves through the year"
 }) => {
   await page.goto("/spot/malahide-estuary");
   await expect(page.locator("[data-graph-svg]")).toBeVisible({ timeout: 30000 });
+  await page.locator('[data-disclosure="year"] summary').click();
   await expect(page.locator("[data-climate-sheltered]")).toBeAttached();
   await expect(page.locator('[data-week-section="waves"]')).toHaveCount(0);
   await expect(page.locator("[data-readout-sea]")).toHaveCount(0);
@@ -422,6 +423,7 @@ test.describe("on a phone", () => {
   test("on sheltered water the readout has no switch", async ({ page }) => {
     await page.goto("/spot/malahide-estuary");
     await expect(page.locator("[data-graph-svg]")).toBeVisible({ timeout: 30000 });
+    await page.locator('[data-disclosure="year"] summary').click();
     await expect(page.locator("[data-climate-sheltered]")).toBeAttached();
     await expect(
       page.getByRole("group", { name: "What the readout shows" }),

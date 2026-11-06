@@ -307,6 +307,53 @@ export interface SpotRow {
   water?: HourWater | null;
 }
 
+/** A stretch of hours with stars: when, the most stars in it, and its wind. */
+export interface StarWindow {
+  from: number;
+  /** The end of its last hour. */
+  to: number;
+  stars: number;
+  /** The wind, lowest and highest, in knots; null where no hour says. */
+  low: number | null;
+  high: number | null;
+}
+
+/** How many stars make a window worth naming ahead of an earlier, lesser one. */
+const GOOD_STARS = 3;
+
+/**
+ * The next stretch of hours with stars, from the hour now on: the first with
+ * three stars or more, else the first with any. Null with none in the rows.
+ */
+export function nextStarWindow(
+  rows: readonly Pick<SpotRow, "time" | "step" | "rating" | "hour">[],
+  now: number,
+): StarWindow | null {
+  const runs: StarWindow[] = [];
+  let run: StarWindow | null = null;
+  for (const row of rows) {
+    const stars = row.rating?.stars ?? 0;
+    const end = row.time + row.step * HOUR;
+    if (end <= now || stars < 1) {
+      run = null;
+      continue;
+    }
+    const kn = row.hour.wind?.wind_kn ?? null;
+    if (!run) {
+      run = { from: row.time, to: end, stars, low: kn, high: kn };
+      runs.push(run);
+      continue;
+    }
+    run.to = end;
+    run.stars = Math.max(run.stars, stars);
+    if (kn !== null) {
+      run.low = run.low === null ? kn : Math.min(run.low, kn);
+      run.high = run.high === null ? kn : Math.max(run.high, kn);
+    }
+  }
+  return runs.find((r) => r.stars >= GOOD_STARS) ?? runs[0] ?? null;
+}
+
 /** Rate one forecast hour for a rider at a shore, from the one model's own wind. */
 export function rateForecastHour(
   hour: ForecastHour,

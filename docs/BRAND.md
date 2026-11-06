@@ -222,6 +222,11 @@ and the rest of the page stays; in a narrow column its action goes under the
 words (`stacked`). Over the map it is the same notice, floating. The words
 say what a rider can do, never what a developer would run.
 
+**Disclosure.** `Disclosure` is what a page keeps for whoever asks: a heading
+with a chevron that opens what is under it, with no frame and no rule, and
+nothing under it drawn or fetched until then. `small` is a grey name in place
+of a section's heading, for a chart's key.
+
 **Dialog.** `Dialog` and `ConfirmDialog`: the ground with a sheet's corner
 and the sheet's shadow, no frame and no rule under the title; the title in
 Inter at `text-lead`, a quiet close button, a hairline above the actions

@@ -59,7 +59,7 @@ import {
   useSpotCurrents,
   type SpotCurrents,
 } from "../../../shared/web/useSpotCurrents";
-import { NoticeMark, Segmented } from "../../../ui";
+import { Button, Disclosure, NoticeMark, Segmented, StarGlyphs } from "../../../ui";
 import type { NightHours } from "../../../force5/src/prefs";
 import {
   afterDark,
@@ -83,6 +83,8 @@ import {
   daySun,
   dayNames,
   dublinDate,
+  nextStarWindow,
+  type StarWindow,
   dublinHour,
   dublinMidnight,
   groupDays,
@@ -165,6 +167,12 @@ const styles = tv({
     nearName: "font-body text-body font-semibold whitespace-nowrap",
     nearLine:
       "flex items-center gap-2 font-body text-body whitespace-nowrap text-ink-2",
+    // The next stars, first: when, how many and the wind, in figures.
+    next: "flex flex-wrap items-center gap-x-3 gap-y-1 rounded-surface bg-sunken on-card px-4 py-3 font-body text-prose text-ink wide:px-5",
+    nextName: "text-body font-medium text-ink-muted",
+    nextWhen: "font-semibold tabular-nums",
+    nextWind: "text-ink-2 tabular-nums",
+    nextGo: "ml-auto",
     now: "grid gap-3 rail:grid-cols-now rail:gap-4 xwide:grid-cols-now-wide",
     column: "flex min-w-0 flex-col gap-5",
     cards: "grid grid-cols-2 content-start gap-3",
@@ -564,6 +572,7 @@ export function SpotReport({
   const seaShown =
     sheltered === false && waves.rows.some((r) => r !== null) ? waves : null;
 
+  const nextStars = useMemo(() => nextStarWindow(rows, now), [rows, now]);
   const nowRow = rowAt(rows, now);
   const shown = focus === null ? nowRow : rowAt(rows, focus);
   const scale = useMemo(() => roseScale(units), [units]);
@@ -641,7 +650,31 @@ export function SpotReport({
           </section>
         )}
 
+        {!point && (
+          <NextStars
+            window={nextStars}
+            now={now}
+            onShow={(time) => {
+              const date = dublinDate(time);
+              const day = days.findIndex((d) => d.day.date === date);
+              if (day >= 0) {
+                setDayAt(day);
+                setScrollTo({ day, at: Date.now() });
+              }
+              setFocus(time);
+              setView("graph");
+              document
+                .getElementById("the-week")
+                ?.scrollIntoView({ behavior: "smooth" });
+            }}
+          />
+        )}
+
         <section className={s.section({ className: "pt-5" })} aria-label="Now">
+          {/* The warnings and notices over everything else in the section,
+              the width of the page, so the cards and the picture beside them
+              come out the same height. */}
+          {notices && <div className="mb-3 rail:mb-4">{notices}</div>}
           {/* With no picture (a point on the water never has one) the cards
               take the room: one column, the template left out rather than
               overridden, since a later class does not undo an earlier one
@@ -657,9 +690,7 @@ export function SpotReport({
                   })
             }
           >
-            {/* The warnings and notices above the cards, in their column. */}
             <div className={s.column()}>
-              {notices}
               <NowCards
                 forecast={forecast}
                 sea={forecast.sea_temperature}
@@ -836,7 +867,13 @@ export function SpotReport({
             </div>
           </section>
         )}
-        {!point && <ClimateSections spotId={spot.id} units={units} />}
+        {!point && (
+          <section className={s.section()}>
+            <Disclosure title="The wind and waves through the year" data-disclosure="year">
+              <ClimateSections spotId={spot.id} units={units} />
+            </Disclosure>
+          </section>
+        )}
         <div className={s.smallPrint()}>
           <p className="m-0">
             Model forecasts, not a safety statement. Look at the water before
@@ -873,6 +910,66 @@ export function SpotReport({
 
 const km = (distance: number) =>
   distance < 10 ? distance.toFixed(1) : String(Math.round(distance));
+
+/**
+ * The first thing on the page: the next hours with stars, in figures. It says
+ * when and how many, and leaves the reading to the rider (the information
+ * rule); the button puts those hours under the graph's readout.
+ */
+function NextStars({
+  window: next,
+  now,
+  onShow,
+}: {
+  window: StarWindow | null;
+  now: number;
+  onShow: (time: number) => void;
+}) {
+  const s = styles();
+  const speed = useSpeed();
+  if (!next)
+    return (
+      <p className={s.next({ className: "m-0" })} data-next-stars>
+        <span className={s.nextName()}>No stars in the days ahead</span>
+      </p>
+    );
+  const running = next.from <= now;
+  const day = dayNames(dublinDate(next.from), now).short;
+  const same = next.low === next.high;
+  return (
+    <section
+      className={s.next()}
+      aria-label={running ? "Stars now" : "Next stars"}
+      data-next-stars
+    >
+      <span className={s.nextName()}>
+        {running ? "Stars now" : "Next stars"}
+      </span>
+      <StarGlyphs stars={next.stars} size={14} coloured />
+      <span className={s.nextWhen()}>
+        {running
+          ? `until ${clock(next.to)}`
+          : `${day}, ${clock(next.from)}–${clock(next.to)}`}
+      </span>
+      {next.low !== null && next.high !== null && (
+        <span className={s.nextWind()}>
+          {same
+            ? speed.say(next.low)
+            : `${speed.say(next.low)}–${speed.say(next.high)}`}{" "}
+          {speed.unit}
+        </span>
+      )}
+      <Button
+        variant="quiet"
+        size="sm"
+        className={s.nextGo()}
+        onClick={() => onShow(next.from)}
+      >
+        Show in the week
+      </Button>
+    </section>
+  );
+}
 
 /**
  * Under a point's name: that it is open water, and the riding place nearest
@@ -1759,6 +1856,14 @@ function Graph({
   // middle, and rides out to the right edge over the last, so every hour
   // can be put under it.
   const phone = width < 600;
+  // The keys stand open on a wide window, and wait to be asked for on a phone,
+  // where they would push the rest of the page down a screen each.
+  const [keyOpen] = useState(
+    () =>
+      typeof window === "undefined" ||
+      !window.matchMedia ||
+      window.matchMedia("(min-width: 600px)").matches,
+  );
   const reach = W - width;
   const headAt = (left: number) =>
     reach < width
@@ -1792,8 +1897,9 @@ function Graph({
       ? // The hour the address opens on, else now, under the playhead.
         Math.max(0, leftFor(opened ? mid(opened) : X(now)))
       : // The hour the address opens on, a third of the way in, as the
-        // hours before it are worth a glance; else now, six hours in.
-        Math.max(0, opened ? X(opened.time) - width / 3 : X(now) - px * 6);
+        // hours before it are worth a glance; else now, an hour in, as the
+        // rows start from the hour now and little is drawn before it.
+        Math.max(0, opened ? X(opened.time) - width / 3 : X(now) - px);
     for (const el of scrollers()) el.scrollLeft = left;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [px, !!waves]);
@@ -2669,6 +2775,14 @@ function Graph({
         </div>
         {/* The key, in groups as the graph's bands run, each mark drawn as
             the graph draws it. */}
+        <Disclosure
+          title="Key"
+          as="span"
+          small
+          defaultOpen={keyOpen}
+          className="px-1 pt-3 wide:px-4"
+          data-disclosure="wind-key"
+        >
         <div className={s.legend()} data-legend>
           <KeyGroup name="Wind">
             <KeyItem mark="wind">Wind</KeyItem>
@@ -2733,6 +2847,7 @@ function Graph({
             )}
           </KeyGroup>
         </div>
+        </Disclosure>
       </section>
       {waves && waveStack && (
         <section
@@ -2842,6 +2957,14 @@ function Graph({
               />
             )}
           </div>
+          <Disclosure
+            title="Key"
+            as="span"
+            small
+            defaultOpen={keyOpen}
+            className="px-1 pt-3 wide:px-4"
+            data-disclosure="wave-key"
+          >
           <div className={s.legend()} data-wave-legend>
             <KeyGroup name="Waves">
               <KeyItem mark="sea">
@@ -2895,6 +3018,7 @@ function Graph({
               </KeyGroup>
             )}
           </div>
+          </Disclosure>
         </section>
       )}
     </>

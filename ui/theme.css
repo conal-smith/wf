@@ -681,6 +681,14 @@
  * fill (`bg-well`), so a field, a chip, a segmented well or a soft button
  * does not vanish into the card it stands on. Card, Rows and Notice carry it.
  */
+/* A <summary> with no marker of the browser's own: it draws its own chevron. */
+@utility no-marker {
+  list-style: none;
+  &::-webkit-details-marker {
+    display: none;
+  }
+}
+
 @utility on-card {
   /* On two lines, so the drift check (scripts/lint-design-tokens.mjs) reads
      it as the utility's and not as the token's own value. */

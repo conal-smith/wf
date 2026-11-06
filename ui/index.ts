@@ -54,6 +54,7 @@ export {
   type SegmentedProps,
 } from "./Segmented";
 export { Select, type SelectProps } from "./Select";
+export { Disclosure, type DisclosureProps } from "./Disclosure";
 export { Skeleton, type SkeletonProps } from "./Skeleton";
 export { Slider, type SliderProps } from "./Slider";
 export { SpotSearch, loadPlaces, type SpotSearchProps } from "./SpotSearch";

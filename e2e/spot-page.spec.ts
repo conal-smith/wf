@@ -180,7 +180,7 @@ const readoutLayout = (page: Page) =>
       cells: [...readout.children].map(at),
       pill: at(readout.querySelector("span")),
       graph: at(document.querySelector("[data-spot-graph]")),
-      key: at(document.querySelector("[data-legend]")),
+      key: at(document.querySelector('[data-disclosure="wind-key"]')),
     };
   });
 
@@ -236,6 +236,15 @@ for (const width of [1440, 390])
     const svg = page.locator("[data-graph-svg]");
     const readout = page.locator("[data-readout]");
     const legend = page.locator("[data-legend]");
+    // A phone keeps the key behind its heading until it is asked for.
+    const openKey = async () => {
+      if (width < 600)
+        await page.locator('[data-disclosure="wind-key"] summary').click();
+    };
+    await expect(page.locator("[data-graph-svg]")).toBeVisible({
+      timeout: 30000,
+    });
+    await openKey();
     await expect(svg).toBeVisible();
     // Round the clock by default: the night shaded, and now, at 22:00 on the
     // Sunday, read out as dark.
@@ -255,9 +264,11 @@ for (const width of [1440, 390])
     await page.goto("/spot/brandon");
     await expect(heading(page)).toBeVisible({ timeout: 30000 });
     await expect(svg).toBeVisible();
+    await openKey();
     // No night: nothing shaded, no key for it, and the days joined by their
     // lines alone.
     await expect(svg.locator("[data-night]")).toHaveCount(0);
+    await expect(legend).toContainText("Wind");
     await expect(legend).not.toContainText("Dark");
     await expect(svg.locator("[data-day-line]").first()).toBeAttached();
     // Now is after dark: the readout is Monday's first light instead.
@@ -887,6 +898,9 @@ test("below the spot: the wind and the waves through the year, with their figure
   page.on("pageerror", (error) => errors.push(error.message));
   await withTides(page);
   await page.goto("/spot/brandon");
+  // Kept for whoever asks: nothing of it is read until it is opened.
+  await expect(page.locator("[data-climate]")).toHaveCount(0);
+  await page.locator('[data-disclosure="year"] summary').click();
   const year = page.locator("[data-climate]");
   await expect(year).toBeAttached({ timeout: 30000 });
   await year.scrollIntoViewIfNeeded();
@@ -958,6 +972,7 @@ test("sheltered water says the open sea's waves do not reach it, rather than sho
 }) => {
   await withTides(page);
   await page.goto("/spot/malahide-estuary");
+  await page.locator('[data-disclosure="year"] summary').click();
   const year = page.locator("[data-climate]");
   await expect(year).toBeAttached({ timeout: 30000 });
   await expect(
@@ -977,6 +992,7 @@ test("a point on the open water has no year of its own", async ({ page }) => {
     page.getByRole("heading", { level: 1, name: "52.30° N, 10.10° W" }),
   ).toBeVisible({ timeout: 30000 });
   await expect(page.locator("[data-climate]")).toHaveCount(0);
+  await expect(page.locator('[data-disclosure="year"]')).toHaveCount(0);
 });
 
 /** The figures in a wind, in order: "3 g5 kn W" is ["3", "5"]. */
