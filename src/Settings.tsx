@@ -1107,7 +1107,7 @@ function UpwindPart({ draft, setDraft }: PartProps) {
         </text>,
       );
     }
-    return <g key={side}>{out}</g>;
+    return <g key={`angle${side}`}>{out}</g>;
   };
   /** RIDE in each course: inside it when it is wide, haloed over its edge when not. */
   const rideLabel = (side: 1 | -1) => {
@@ -1115,7 +1115,7 @@ function UpwindPart({ draft, setDraft }: PartProps) {
     const [x, y] = p((side * (up + deep)) / 2, wide ? r * 0.6 : r * 0.56);
     return (
       <text
-        key={side}
+        key={`ride${side}`}
         className={`st-lab is-strong${wide ? "" : " is-halo"}`}
         x={x.toFixed(1)}
         y={(y + (wide ? 3 : -8)).toFixed(1)}
