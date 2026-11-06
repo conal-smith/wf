@@ -7,7 +7,7 @@
  * Where it would run into the dock (on a phone, most often) LayerRail gives
  * it a max-height and it scrolls. A scroller clips what stands out of it, so
  * it reaches out to the left, under the chart and out of the pointer's way,
- * far enough for the names that show there.
+ * far enough for a name and its note.
  */
 .lr {
   display: flex;
@@ -20,7 +20,7 @@
   overscroll-behavior: contain;
   scrollbar-width: none;
   pointer-events: none;
-  --lr-tips: 260px;
+  --lr-tips: 320px;
 }
 .lr::-webkit-scrollbar {
   display: none;
@@ -81,6 +81,7 @@
   right: calc(100% + 6px);
   top: 0;
   box-sizing: border-box;
+  width: max-content;
   min-height: var(--spacing-control-sm);
   padding: 7px 10px 6px;
   border-radius: var(--radius-control);
@@ -126,11 +127,13 @@
 }
 /* What a layer that is on cannot draw just now: a line under its name, and
    a small dot on the button saying there is something to read there. */
+/* On the name's own line: a line of its own would take the room the rail
+   needs to stand whole on a phone, or stand on the next layer's name. */
 .lr-note {
-  display: block;
-  max-width: 220px;
-  white-space: normal;
   opacity: 0.85;
+}
+.lr-note::before {
+  content: " · ";
 }
 .lr .lr-ic[data-noted]::after {
   content: "";
