@@ -19,7 +19,10 @@ import {
   SoundingsGlyph,
   TidalDepthGlyph,
 } from "./chartGlyphs";
+import { DepthScale } from "./DepthScale";
+import { KnotScale } from "./KnotScale";
 import type { InfoSection } from "./mapInfoContext";
+import { RainScale } from "./RainScale";
 
 /** What the chart draws, and the way to change each part of it. */
 export interface LayerChoices {
@@ -86,6 +89,8 @@ export interface LayerTile {
   info?: { label: string; at: InfoSection };
   /** What it cannot draw just now, while it is on. */
   note?: string | null;
+  /** The scale its colours are read on, shown under its name while it is on. */
+  scale?: ReactNode;
   /** New to the chart: marked so beside its name. */
   isNew?: boolean;
   /**
@@ -167,12 +172,15 @@ export function layerGroups({
       glyph: <ChartGlyph glyph={glyphs.wind} size={14} />,
       rule: "any",
       tiles: [
-        windPart(
-          "wash",
-          "Coloured wind",
-          "Speed as colour",
-          <ColouredWindGlyph size={18} />,
-        ),
+        {
+          ...windPart(
+            "wash",
+            "Coloured wind",
+            "Speed as colour",
+            <ColouredWindGlyph size={18} />,
+          ),
+          scale: <KnotScale />,
+        },
         windPart(
           "particles",
           "Particles",
@@ -197,13 +205,16 @@ export function layerGroups({
       glyph: <ChartGlyph glyph={glyphs.waves} size={14} />,
       rule: "any",
       tiles: [
-        part(
-          "foil",
-          "Tidal depth",
-          "Water at this tide",
-          <TidalDepthGlyph size={18} />,
-          { label: "About tidal depth", at: "foil" },
-        ),
+        {
+          ...part(
+            "foil",
+            "Tidal depth",
+            "Water at this tide",
+            <TidalDepthGlyph size={18} />,
+            { label: "About tidal depth", at: "foil" },
+          ),
+          scale: <DepthScale />,
+        },
         {
           ...part(
             "currents",
@@ -237,6 +248,7 @@ export function layerGroups({
             <RainGlyph size={18} />,
             { label: "About rain", at: "rain" },
           ),
+          scale: <RainScale />,
           isNew: true,
         },
       ],
@@ -300,6 +312,8 @@ export interface RailItem {
   on: boolean;
   /** What it cannot draw just now, said beside its name. */
   note?: string | null;
+  /** The scale its colours are read on, under its name while it is on. */
+  scale?: ReactNode;
   press: () => void;
 }
 
@@ -323,6 +337,7 @@ export function railGroups(groups: LayerGroup[]) {
           glyph: tile.glyph,
           on: tile.on,
           note: tile.note,
+          scale: tile.scale,
           press: tile.on && none ? none.press : tile.press,
         })),
     };

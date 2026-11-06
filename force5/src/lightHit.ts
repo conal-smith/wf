@@ -79,3 +79,39 @@ export function nextLight(
   });
   return best;
 }
+
+/** A light as the thinning pass sees it: where it stands, and how far it reaches. */
+export interface ThinLight {
+  id: string;
+  x: number;
+  y: number;
+  /** Half its width and height, in pixels, its margin with them. */
+  halfW: number;
+  halfH: number;
+  /** Higher keeps its full mark. */
+  rank: number;
+}
+
+/**
+ * The lights that step down to a dot, so no mark stands on another: the best
+ * first, each keeping its full mark where it touches none already kept. Every
+ * light stays on the chart, and a tie keeps the order it was given in, so the
+ * same hour always thins the same way.
+ */
+export function thinLights(lights: readonly ThinLight[]): Set<string> {
+  const kept: ThinLight[] = [];
+  const thinned = new Set<string>();
+  const byRank = lights
+    .map((light, at) => ({ light, at }))
+    .sort((a, b) => b.light.rank - a.light.rank || a.at - b.at);
+  for (const { light } of byRank) {
+    const clash = kept.some(
+      (other) =>
+        Math.abs(other.x - light.x) < other.halfW + light.halfW &&
+        Math.abs(other.y - light.y) < other.halfH + light.halfH,
+    );
+    if (clash) thinned.add(light.id);
+    else kept.push(light);
+  }
+  return thinned;
+}

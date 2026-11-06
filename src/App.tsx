@@ -1972,6 +1972,26 @@ export default function App() {
     [windObs, dockSpot?.lat, dockSpot?.lon],
   );
 
+  /**
+   * With no spot chosen, the scrub bar's lane: how many of the places rated
+   * have stars at each hour. A warning that takes the stars takes them here.
+   */
+  const ratedSpots = useMemo(() => {
+    if (!barShown || dockSpot || !hours.size) return null;
+    const columns = strip.map(() => ({ spots: 0, best: 0 }));
+    for (const row of hours.values())
+      row.forEach((hour, at) => {
+        const column = columns[at];
+        if (!column || hour?.warning?.replacesRating) return;
+        if (hour?.water?.replacesRating) return;
+        const stars = hour?.rating?.stars ?? 0;
+        if (stars < 1) return;
+        column.spots++;
+        column.best = Math.max(column.best, stars);
+      });
+    return { columns, of: hours.size };
+  }, [barShown, !!dockSpot, version, strip]);
+
   const pointHours: PlaceHour[] | undefined = picked
     ? pickedHours
     : point
@@ -2737,6 +2757,7 @@ export default function App() {
                       units={prefs.units}
                       nightHours={prefs.nightHours}
                       measured={dockPaired}
+                      rated={ratedSpots}
                       href={
                         !column
                           ? null

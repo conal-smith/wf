@@ -1,8 +1,8 @@
 /*
  * The layers' rail (src/LayerRail.tsx): beside the zoom, a column of round
- * switches over the chart with no panel behind them. Off is a plain disc on
- * the ground with a small soft shadow; on is filled in ink. The groups are
- * set apart by space.
+ * switches over the chart with no panel behind them, each with its name to
+ * its left. Off is a plain disc on the ground with a small soft shadow; on is
+ * filled in ink. The groups are set apart by space.
  *
  * Where it would run into the dock (on a phone, most often) LayerRail gives
  * it a max-height and it scrolls. A scroller clips what stands out of it, so
@@ -72,36 +72,57 @@
 .lr .lr-ic:active {
   transform: translateY(1px);
 }
-/* Its name and whether it is on, to its left, under the pointer and on the
-   keys' focus: a dark pill. */
+/* Its name, to its left, for as long as the rail is open: part of the button,
+   on a small box of the ground, filled in ink as the button is while it is
+   on. "Off" is left unsaid: the plain box says it, and the word stays for a
+   screen reader through the button's pressed state. */
 .lr-tip {
   position: absolute;
-  right: calc(100% + 8px);
-  top: 50%;
-  transform: translateY(-50%);
-  padding: 5px 11px;
+  right: calc(100% + 6px);
+  top: 0;
+  box-sizing: border-box;
+  min-height: var(--spacing-control-sm);
+  padding: 7px 10px 6px;
   border-radius: var(--radius-control);
-  font: 500 13px/1.3 var(--font-body);
+  font: 500 var(--text-body) / 1.4 var(--font-body);
   text-align: left;
+  background: var(--color-ground);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-card);
+  white-space: nowrap;
+  pointer-events: auto;
+}
+:root[data-theme="dark"] .lr-tip {
+  box-shadow:
+    var(--shadow-card),
+    0 0 0 1px var(--color-line);
+}
+.lr-ic[aria-pressed="true"] .lr-tip {
   background: var(--color-ink);
   color: var(--color-ink-inverse);
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity var(--transition-duration-fast) ease;
 }
 .lr-tip small {
-  font-size: inherit;
-  opacity: 0.7;
+  display: none;
 }
 @media (hover: hover) and (pointer: fine) {
-  .lr-ic:hover .lr-tip {
-    opacity: 1;
+  .lr .lr-ic:not([aria-pressed="true"]):hover .lr-tip {
+    background: var(--color-sunken);
   }
 }
-.lr-ic:focus-visible .lr-tip,
-.lr-ic[data-told] .lr-tip {
-  opacity: 1;
+/* A layer's scale, under its name while it is on: on the ground, whichever
+   fill the name has, so its colours are the map's own. */
+.lr .lr-ic[data-scaled] {
+  margin-bottom: 56px;
+}
+.lr-scale {
+  display: block;
+  width: 196px;
+  margin: 6px -4px -2px;
+  padding: 6px 8px 4px;
+  border-radius: var(--radius-control);
+  background: var(--color-ground);
+  color: var(--color-ink);
+  white-space: normal;
 }
 /* What a layer that is on cannot draw just now: a line under its name, and
    a small dot on the button saying there is something to read there. */

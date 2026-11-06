@@ -380,6 +380,10 @@ function MapKey({ scale }: { scale: string }) {
         <Key mark={<KeyLight stars={0} />} name="None now">
           Dashed: no stars at this hour.
         </Key>
+        <Key mark={<i className="mi-dot" />} name="Seen from far out">
+          A small dot has no stars at this hour, or stands beside a better spot.
+          Zoom in to see it in full.
+        </Key>
         <Key mark={<KeyLight stars={1} struck />} name="Offshore">
           Struck through in red. Not safe.
         </Key>

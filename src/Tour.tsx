@@ -117,7 +117,7 @@ const STEPS: Step[] = [
   {
     id: "lights",
     title: "Spots on the map",
-    body: "Each circle on the map is a place to ride. The number inside is how good the riding is there, from 0 to 5 stars, and the arrow shows which way the wind is blowing.",
+    body: "Each mark on the map is a place to ride. The number inside is how good the riding is there, from 1 to 5 stars. A small dot has no stars at that time. Zoom in to see the arrow that shows the way the wind is blowing.",
     prep: (p) => p.spot && p.onSpot(null),
     target: (t) => {
       const light =
@@ -143,7 +143,7 @@ const STEPS: Step[] = [
   {
     id: "time",
     title: "Pick a time",
-    body: "Drag along the week, or press play, to move through it. The whole map then shows the wind and stars for that time.",
+    body: "Drag along the week to move through it. The whole map then shows the wind and stars for that time.",
     target: () => pad(box(document.querySelector(TARGETS.strip)), 4),
   },
   {

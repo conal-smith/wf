@@ -912,6 +912,21 @@ published, the finest model at each hour stands in. The defaults are
 unchanged: HARMONIE then ECMWF for the wind, the finest wave model at each
 hour for the waves, each blend drawn beside them.
 
+**2026-11-06 — Marks that read from far out, and names beside what is
+drawn.** A design review found the whole-of-Ireland chart unreadable: 149
+rings and arrows on one coastline. Every spot stays on the chart. From the
+national zoom a spot with no stars at the hour is a small dot, red where it is
+offshore; a rated spot is a ring large enough to read its figure, with no
+arrow; and a mark that would stand on a better one steps down to a dot in its
+own colour (`thinLights`, force5/src/lightHit.ts). Beside the list a pill steps
+down the same way. The layers stay a rail of round glyphs with no panel behind
+them, as 2026-10-29 has it, but each name now stands beside its button while
+the rail is open, in place of a tooltip, and a layer drawn in colours has its
+scale under its name while it is drawing. The scrub bar stays the data alone,
+as 2026-11-02 has it, but it is opaque, its wind is a solid fill on a scale, and
+its bands are named in a column of their own. With no spot chosen it has one
+lane, how many spots have stars at each hour.
+
 ---
 
 ## Still open

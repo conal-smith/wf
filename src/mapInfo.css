@@ -613,6 +613,15 @@
   color: var(--color-ink-muted);
 }
 
+.mi-dot {
+  display: block;
+  width: 7px;
+  height: 7px;
+  margin: 0 auto;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-ink) 58%, var(--color-ground));
+}
+
 /* ---- a phone: the whole screen, the rail a row of tabs ---- */
 @media (max-width: 720px) {
   .map-info {

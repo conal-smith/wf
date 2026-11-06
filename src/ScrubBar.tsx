@@ -6,13 +6,16 @@
  * tide); under them the strip, the whole forecast from now on along the full
  * width, with a playhead a finger or a mouse drags smoothly through it.
  *
- * With a spot chosen the strip draws its week: the wind (a fill in the map's
- * own wind colours, the gusts dashed over it), under it one thin row of the
- * stars as colour, the stars' own shades from one to five, and under that a
- * lane each for the waves and the tide. With none chosen it is a plain
- * timeline: the days, the night, now, and the playhead, which still moves
- * the map. The spot's name is beside it on the map; a tap off it on the map
- * lets it go, and the card with it.
+ * With a spot chosen the strip draws its week: the wind (a solid fill in the
+ * map's own wind colours on a scale from calm, the gusts dashed over it),
+ * under it one row of the stars as colour, the stars' own shades from one to
+ * five, and under that a lane each for the waves and the tide. Each band is
+ * named in a column of its own beside the hours, and the wind's scale stands
+ * there too. With none chosen it is a timeline with one lane, how many spots
+ * have stars at each hour, so the bar says where in the week to look before
+ * a spot is chosen; the playhead still moves the map. The spot's name is
+ * beside it on the map; a tap off it on the map lets it go, and the card with
+ * it.
  *
  * The strip shows a week at a time, the full width of the bar, and slides on
  * through the forecast's fifteen days as the playhead nears its edge: dragged
@@ -88,16 +91,23 @@ const NO_MODELS: readonly ModelAvailability[] = [];
 
 /**
  * The strip's drawing, in pixels: the wind's curve, then the row of stars,
- * then a lane each for the waves and the tide.
+ * then a lane each for the waves and the tide. The curve is the bar's reason
+ * for being, so it takes the room: a phone's is shorter, the map being the
+ * smaller there.
  */
-const CURVE_TOP = 6;
-const CURVE_BOTTOM = 46;
-const STARS_Y = 51;
-const STARS_H = 5;
+const CURVE_TOP = 4;
+const CURVE_TALL = 64;
+const CURVE_SHORT = 48;
+/** Below this strip width the curve is the short one. */
+const NARROW = 420;
+const STARS_GAP = 5;
+const STARS_H = 7;
 const LANE_H = 14;
 const LANE_GAP = 6;
-/** With no spot: the days and the night alone, in a slimmer strip. */
-const BARE_HEIGHT = 34;
+/** With no spot: the days, the night and the lane of spots with stars. */
+const BARE_HEIGHT = 44;
+/** What the bare strip keeps under its drawing, clear of the playhead's foot. */
+const BARE_FOOT = 12;
 
 /** A lane under the wind: what it draws, and where it stands. */
 interface Lane {
@@ -113,7 +123,18 @@ interface StarRun {
   stops: { at: number; stars: number }[];
 }
 
+/** How many spots have stars at one column, and the most any of them has. */
+export interface ColumnSpots {
+  spots: number;
+  best: number;
+}
+
 export interface ScrubBarProps {
+  /**
+   * With no spot chosen: how many of the places rated have stars at each of
+   * the strip's columns, and how many places that is out of.
+   */
+  rated?: { columns: readonly ColumnSpots[]; of: number } | null;
   /**
    * The weather station or buoy beside the place (force5/src/windObs.ts
    * `pairStation`), or null: with the playhead at or before now, the
@@ -168,6 +189,7 @@ export default function ScrubBar({
   reachable,
   onShowOnMap,
   measured = null,
+  rated = null,
 }: ScrubBarProps) {
   const id = useId();
   const place = spot ?? IRELAND_MIDDLE;
@@ -490,19 +512,32 @@ export default function ScrubBar({
     });
   }, [named, strip, stripHours, waves, tide]);
 
-  /** The wind's scale: from calm to a round top over the week's strongest. */
-  const windHigh = useMemo(
-    () =>
-      Math.max(
-        25,
-        ...(series ?? []).flatMap((s) =>
-          [s.wind, s.gust].filter((v): v is number => v !== null),
-        ),
-      ) * 1.08,
-    [series],
-  );
+  /**
+   * The wind's scale: from calm to just over the strongest gust in the week
+   * in view, so a week's shape fills the strip whatever a later week does. It
+   * moves only as the week slides on.
+   */
+  const windHigh = useMemo(() => {
+    const seen = (series ?? []).flatMap((s, at) => {
+      const along = line.at(strip[at].time);
+      return along < view0 || along > view0 + span
+        ? []
+        : [s.wind, s.gust].filter((v): v is number => v !== null);
+    });
+    return Math.max(25, ...seen) * 1.08;
+  }, [series, strip, line, view0, span]);
+  const curveBottom = width && width < NARROW ? CURVE_SHORT : CURVE_TALL;
+  const starsY = curveBottom + STARS_GAP;
   const y = (value: number) =>
-    CURVE_BOTTOM - (value / windHigh) * (CURVE_BOTTOM - CURVE_TOP);
+    curveBottom - (value / windHigh) * (curveBottom - CURVE_TOP);
+  /** The scale beside the curve: a line and a figure, ten knots apart or twenty. */
+  const windTicks = useMemo(() => {
+    const step = windHigh > 45 ? 20 : 10;
+    const out: number[] = [];
+    // None so near the top that it runs into the band's name.
+    for (let kn = step; y(kn) > CURVE_TOP + 16; kn += step) out.push(kn);
+    return out;
+  }, [windHigh, curveBottom]);
 
   // The lanes under the wind: the waves where a riding place lends them,
   // the tide where a station reaches the place. Each is there from the
@@ -514,17 +549,41 @@ export default function ScrubBar({
       ...(lender ? (["waves"] as const) : []),
       ...(tide ? (["tide"] as const) : []),
     ];
-    let top = (isPoint ? CURVE_BOTTOM : STARS_Y + STARS_H) + LANE_GAP;
+    let top = (isPoint ? curveBottom : starsY + STARS_H) + LANE_GAP;
     return kinds.map((kind) => {
       const lane = { kind, top, bottom: top + LANE_H };
       top += LANE_H + LANE_GAP;
       return lane;
     });
-  }, [named, !!lender, !!tide, isPoint]);
+  }, [named, !!lender, !!tide, isPoint, curveBottom]);
   const height = !named
     ? BARE_HEIGHT
-    : (lanes.at(-1)?.bottom ?? (isPoint ? CURVE_BOTTOM : STARS_Y + STARS_H)) +
-      2;
+    : (lanes.at(-1)?.bottom ?? (isPoint ? curveBottom : starsY + STARS_H)) + 2;
+  /** Where the bare strip's drawing ends. */
+  const bareBottom = BARE_HEIGHT - BARE_FOOT;
+  /** The bare strip's bars: each column's share of the most spots at any hour. */
+  const spotBars = useMemo(() => {
+    if (named || !rated || !width) return [];
+    const most = Math.max(1, ...rated.columns.map((c) => c.spots));
+    return rated.columns.flatMap((c, at) => {
+      if (!c.spots || hidden?.[at]) return [];
+      const before =
+        at > 0 ? (strip[at - 1].time + strip[at].time) / 2 : strip[at].time;
+      const after =
+        at < strip.length - 1
+          ? (strip[at + 1].time + strip[at].time) / 2
+          : strip[at].time;
+      return [
+        {
+          at,
+          from: before,
+          to: after,
+          height: Math.max(2, (c.spots / most) * (bareBottom - 2)),
+          best: Math.min(5, Math.max(1, c.best)),
+        },
+      ];
+    });
+  }, [named, rated, width, strip, hidden, bareBottom]);
   /** A lane's own scale: the waves from flat, the tide from its lowest. */
   const laneY = useMemo(() => {
     const out = new Map<Lane["kind"], (v: number) => number>();
@@ -627,11 +686,11 @@ export default function ScrubBar({
     };
   };
   const curve = useMemo(() => {
-    const wind = shape((s) => s.wind, y, CURVE_BOTTOM);
+    const wind = shape((s) => s.wind, y, curveBottom);
     if (!wind) return null;
-    const gust = shape((s) => s.gust, y, CURVE_BOTTOM);
+    const gust = shape((s) => s.gust, y, curveBottom);
     return { ...wind, gust: gust?.line ?? null };
-  }, [series, width, windHigh, view0, span, line, hidden]);
+  }, [series, width, windHigh, view0, span, line, hidden, curveBottom]);
   const laneShapes = useMemo(
     () =>
       lanes.map((lane) => ({
@@ -741,6 +800,14 @@ export default function ScrubBar({
         tide={!!tide}
         units={units}
         measured={measuredHere}
+        withStars={
+          rated && rated.of
+            ? {
+                spots: rated.columns[nearestColumn(strip, pos)]?.spots ?? 0,
+                of: rated.of,
+              }
+            : null
+        }
       />
 
       <div
@@ -787,17 +854,6 @@ export default function ScrubBar({
                   )}
                 </linearGradient>
               )}
-              <linearGradient id={`${id}fade`} x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0" stopColor="#fff" stopOpacity="0.95" />
-                <stop offset="1" stopColor="#fff" stopOpacity="0.35" />
-              </linearGradient>
-              <mask id={`${id}mask`}>
-                <rect
-                  width={width}
-                  height={CURVE_BOTTOM}
-                  fill={`url(#${id}fade)`}
-                />
-              </mask>
               {starRuns.map((run, i) => (
                 <linearGradient
                   key={i}
@@ -836,7 +892,7 @@ export default function ScrubBar({
                   x={x(n.from)}
                   y={0}
                   width={Math.max(0, x(n.to) - x(n.from))}
-                  height={named ? height : height - 14}
+                  height={named ? height : bareBottom}
                   fill={`url(#${id}hatch)`}
                 />
               ))}
@@ -852,10 +908,35 @@ export default function ScrubBar({
                     x1={at}
                     x2={at}
                     y1={0}
-                    y2={named ? height : height - 14}
+                    y2={named ? height : bareBottom}
                   />
                 );
               })}
+              {curve &&
+                windTicks.map((kn) => (
+                  <line
+                    key={kn}
+                    className="sb-grid"
+                    x1={0}
+                    x2={width}
+                    y1={y(kn)}
+                    y2={y(kn)}
+                  />
+                ))}
+              {spotBars.length > 0 && (
+                <g className="sb-spots" data-spot-bars>
+                  {spotBars.map((bar) => (
+                    <rect
+                      key={bar.at}
+                      x={x(bar.from)}
+                      y={bareBottom - bar.height}
+                      width={Math.max(1, x(bar.to) - x(bar.from))}
+                      height={bar.height}
+                      style={{ fill: `var(--color-stars-${bar.best})` }}
+                    />
+                  ))}
+                </g>
+              )}
 
               {curve && (
                 <g data-curve="wind">
@@ -863,7 +944,6 @@ export default function ScrubBar({
                     className="sb-area is-wind"
                     d={curve.area}
                     fill={`url(#${id}wind)`}
-                    mask={`url(#${id}mask)`}
                   />
                   <path className="sb-line is-wind" d={curve.line} />
                   {curve.gust && <path className="sb-gust" d={curve.gust} />}
@@ -899,7 +979,7 @@ export default function ScrubBar({
                   <rect
                     className="sb-stars-track"
                     x={0}
-                    y={STARS_Y}
+                    y={starsY}
                     width={width}
                     height={STARS_H}
                     rx={STARS_H / 2}
@@ -908,7 +988,7 @@ export default function ScrubBar({
                     <rect
                       key={i}
                       x={x(run.from)}
-                      y={STARS_Y}
+                      y={starsY}
                       width={Math.max(STARS_H, x(run.to) - x(run.from))}
                       height={STARS_H}
                       rx={STARS_H / 2}
@@ -935,7 +1015,7 @@ export default function ScrubBar({
                   x1={x(now)}
                   x2={x(now)}
                   y1={0}
-                  y2={named ? height : height - 14}
+                  y2={named ? height : bareBottom}
                 />
               )}
             </g>
@@ -944,7 +1024,7 @@ export default function ScrubBar({
               className="sb-head"
               transform={`translate(${playX.toFixed(1)} 0)`}
             >
-              <line x1={0} x2={0} y1={2} y2={named ? height : height - 12} />
+              <line x1={0} x2={0} y1={2} y2={named ? height : bareBottom + 2} />
               {reading?.wind != null && curve && (
                 <circle
                   className="sb-dot"
@@ -976,6 +1056,42 @@ export default function ScrubBar({
           width={width}
           selectedDate={column?.date}
         />
+        {/* The bands' names and the wind's scale, in a column of their own
+            beside the hours: no figure is ever under one. */}
+        <div className="sb-bands" aria-hidden="true">
+          {named ? (
+            <>
+              <span className="sb-band" style={{ top: CURVE_TOP }}>
+                Wind{units === "bft" ? "" : ` ${unitLabel(units)}`}
+              </span>
+              {curve &&
+                windTicks.map((kn) => (
+                  <span key={kn} className="sb-tick" style={{ top: y(kn) }}>
+                    {speedShort(kn, units)}
+                  </span>
+                ))}
+              {!isPoint && (
+                <span
+                  className="sb-band is-mid"
+                  style={{ top: starsY + STARS_H / 2 }}
+                >
+                  Stars
+                </span>
+              )}
+              {lanes.map((lane) => (
+                <span
+                  key={lane.kind}
+                  className="sb-band is-mid"
+                  style={{ top: lane.top + LANE_H / 2 }}
+                >
+                  {lane.kind === "waves" ? "Waves" : "Tide"}
+                </span>
+              ))}
+            </>
+          ) : (
+            rated && <span className="sb-band">Spots with stars</span>
+          )}
+        </div>
       </div>
 
       {/* The time, for a keyboard and a screen reader: the strip is the
@@ -1076,9 +1192,12 @@ function Readout({
   tide,
   units,
   measured,
+  withStars,
 }: {
   /** What the paired station measured at the hour, or null for the forecast's. */
   measured: MeasuredReading | null;
+  /** With no place chosen: how many spots have stars at the hour. */
+  withStars: { spots: number; of: number } | null;
   time: number;
   reading: {
     wind: number | null;
@@ -1107,7 +1226,14 @@ function Readout({
     return (
       <div className="sb-readout is-bare" data-readout>
         {when}
-        <p className="sb-hint">Tap the map for a forecast</p>
+        <p className="sb-hint">
+          {withStars && (
+            <b>
+              {withStars.spots} of {withStars.of} spots have stars.{" "}
+            </b>
+          )}
+          Tap the map for a forecast
+        </p>
       </div>
     );
   const { wind, gust, from, hour } = reading;
