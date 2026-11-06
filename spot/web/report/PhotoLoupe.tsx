@@ -7,7 +7,7 @@
  * compass is ticked round it; offshore is red on the rim, cross-offshore
  * lighter beside it; the wind's needle is in the wind's colour; inside, the
  * ride rose: the no-go hatched, the tack out filled, the tack home dashed, the
- * slow water dotted, the drift. Its words show on hover, or a tap; OFFSHORE
+ * slow water dotted, the drift. Its words show on hover, or a tap; Offshore
  * always. Its colours are its own (`photo-*`), the same in either theme.
  *
  * `card` is the small one on the Spot finder's cards: shapes, no words, the
@@ -362,16 +362,16 @@ export function PhotoLoupe({
                     width={112}
                     height={30}
                     rx={15}
-                    className="fill-photo-red"
+                    className="fill-photo-tag"
                   />
                   <text
                     x={offshoreMid[0]}
                     y={offshoreMid[1] + 6}
                     textAnchor="middle"
                     className={s.word()}
-                    fontSize={15}
+                    fontSize={17}
                   >
-                    OFFSHORE
+                    Offshore
                   </text>
                 </g>
               )}

@@ -38,6 +38,7 @@
   --ref-color-land-relief: #a9a9b1;
   --ref-color-mark-now: #bf6546;
   --ref-color-mark-gust: #e0803a;
+  --ref-color-mark-gust-ink: #a34d12;
   --ref-color-weather-rain: #3a7fb0;
   --ref-color-weather-cloud: #d4d4da;
   --ref-color-weather-night: #dedee6;
@@ -73,6 +74,7 @@
   --ref-color-night-magenta: #ff5aae;
   --ref-color-night-pen: #ff5b4d;
   --ref-color-night-pen-ink: #ff7d70;
+  --ref-color-night-gust-ink: #e8934f;
   --ref-color-night-warn: #ff6a5e;
   --ref-color-night-warn-ground: #3a1e1b;
   --ref-color-night-ok: #4cc27a;
@@ -194,6 +196,7 @@
   --sem-color-now: var(--ref-color-warm-700);
   --sem-color-now-marker: var(--ref-color-mark-now);
   --sem-color-gust: var(--ref-color-mark-gust);
+  --sem-color-gust-ink: var(--ref-color-mark-gust-ink);
   --sem-color-weather-sun: var(--ref-color-buoy-500);
   --sem-color-weather-rain: var(--ref-color-weather-rain);
   --sem-color-weather-cloud: var(--ref-color-weather-cloud);
@@ -392,6 +395,7 @@
   --sem-color-warn: var(--ref-color-night-warn);
   --sem-color-warn-ground: var(--ref-color-night-warn-ground);
   --sem-color-now: var(--ref-color-night-warn);
+  --sem-color-gust-ink: var(--ref-color-night-gust-ink);
   --sem-color-bg-app: var(--ref-color-night-ground);
   --sem-color-text-primary: var(--ref-color-night-ink);
   --sem-color-text-muted: var(--ref-color-night-muted);

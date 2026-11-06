@@ -172,7 +172,7 @@ const styles = tv({
     wide: "col-span-2",
     big: "my-2 flex flex-wrap items-baseline gap-1.5 font-body text-big-sm text-ink wide:text-big",
     unit: "font-body text-prose font-medium text-ink-2",
-    gust: "font-body text-lead font-semibold text-gust",
+    gust: "font-body text-lead font-semibold text-gust-ink",
     line: "font-body text-prose text-ink-2",
     off: "text-pen",
     bar: "mt-1 mb-2 h-1.5 overflow-hidden rounded-full bg-line",
@@ -4311,7 +4311,7 @@ function Readout({
               {speed.say(measured.reading.windKn)}
               {speed.gust(measured.reading.windKn, measured.reading.gustKn) !==
                 null && (
-                <span className="text-gust">
+                <span className="text-gust-ink">
                   {" "}
                   g
                   {speed.say(
@@ -4330,7 +4330,7 @@ function Readout({
             <>
               {speed.say(wind.wind_kn)}
               {gustKn !== null && (
-                <span className="text-gust"> g{speed.say(gustKn)}</span>
+                <span className="text-gust-ink"> g{speed.say(gustKn)}</span>
               )}{" "}
               {speed.unit} {compass(wind.direction_deg)}
             </>
@@ -4613,7 +4613,7 @@ function HourTable({
                     {w ? speed.say(w.wind_kn) : "–"}
                   </b>
                   {w && speed.gust(w.wind_kn, w.gust_kn) !== null && (
-                    <span className="text-gust">
+                    <span className="text-gust-ink">
                       {" "}
                       {speed.say(speed.gust(w.wind_kn, w.gust_kn)!)}
                     </span>
@@ -4622,7 +4622,7 @@ function HourTable({
                 <td
                   className={s.td({
                     className: `${s.narrow()} ${
-                      rated && g && g.kind !== "fine" ? "text-gust" : ""
+                      rated && g && g.kind !== "fine" ? "text-gust-ink" : ""
                     }`,
                   })}
                   title={rated && g ? GUST_WORDS[g.kind] : undefined}

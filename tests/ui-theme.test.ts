@@ -113,6 +113,7 @@ const COLOURS: Record<string, string> = {
   // and the gust cap on a candle. D12.
   "now-marker": "#bf6546",
   gust: "#e0803a",
+  "gust-ink": "#a34d12",
   // The weather's state, and nothing else: the sun is the buoy's yellow.
   "weather-sun": "#e9b200",
   "weather-rain": "#3a7fb0",
@@ -129,6 +130,7 @@ const COLOURS: Record<string, string> = {
   "photo-shade": "#06080a",
   "photo-pill": "#0a0c0e",
   "photo-red": "#ff4d3d",
+  "photo-tag": "#c7301f",
   "photo-gust": "#ffa45c",
   // The spot page's wave models, each its own line in the wave blend.
   "wave-met-office": "#d05f88",

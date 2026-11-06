@@ -136,4 +136,14 @@ describe("the hour an address opens at", () => {
     expect(rowIndexAt(rows, T0 - 1)).toBeNull();
     expect(rowIndexAt(rows, T0 + 5 * HOUR)).toBeNull();
   });
+
+  it("opens an hour between the hourly rows and the three-hourly ones on the nearer", () => {
+    const rows = [
+      { time: T0, step: 1 },
+      { time: T0 + 1 * HOUR, step: 1 },
+      { time: T0 + 4 * HOUR, step: 3 },
+    ];
+    expect(rowIndexAt(rows, T0 + 2 * HOUR)).toBe(1);
+    expect(rowIndexAt(rows, T0 + 3 * HOUR)).toBe(2);
+  });
 });

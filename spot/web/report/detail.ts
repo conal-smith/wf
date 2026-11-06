@@ -154,14 +154,20 @@ export function atFromSearch(search: string): number | null {
 /**
  * Which row an instant falls in, or null before the first row or past the
  * last one's end: an hour already gone, or past the forecast, is not one the
- * week can open at.
+ * week can open at. Where the hourly rows hand over to the three-hourly ones
+ * there are hours no row holds: one of those opens on the nearer row, never
+ * on now.
  */
 export function rowIndexAt(
   rows: readonly Pick<SpotRow, "time" | "step">[],
   time: number,
 ): number | null {
-  const at = rows.findIndex(
-    (row) => time >= row.time && time < row.time + row.step * HOUR,
-  );
-  return at === -1 ? null : at;
+  const next = rows.findIndex((row) => row.time > time);
+  const at = (next === -1 ? rows.length : next) - 1;
+  if (at < 0) return null;
+  const row = rows[at];
+  const end = row.time + row.step * HOUR;
+  if (time < end) return at;
+  if (next === -1) return null;
+  return rows[next].time - time < time - (end - HOUR) ? next : at;
 }

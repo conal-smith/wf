@@ -219,6 +219,9 @@
      both draw at the present hour, and the gust cap on a candle (D12). */
   --color-now-marker: #bf6546;
   --color-gust: #e0803a;
+  /* The same gust in words and figures, which need 4.5:1 on a card and on a
+     control's fill: the cap's orange is a mark, 2.6:1 on `sunken`. */
+  --color-gust-ink: #a34d12;
 
   /* The weather's state, and nothing else: the sky's glyphs (shared/web/glyphSet.ts)
      drawn as a chart draws a buoy, an ink outline with the colour inside. The
@@ -831,6 +834,9 @@
   --color-photo-shade: #06080a;
   --color-photo-pill: #0a0c0e;
   --color-photo-red: #ff4d3d;
+  /* The red behind a word on the photograph: white on it reads at 5.4:1, where
+     the rim's brighter red is 3.3:1. */
+  --color-photo-tag: #c7301f;
   --color-photo-gust: #ffa45c;
   /* The wave models' own lines in the spot page's wave blend: five hues a
      colour-blind rider can tell apart side by side, on both themes; the two
@@ -915,6 +921,7 @@
   --color-chart-magenta: #ff5aae;
   --color-pen: #ff5b4d;
   --color-pen-ink: #ff7d70;
+  --color-gust-ink: #e8934f;
   --color-ok: #4cc27a;
   --color-warn: #ff6a5e;
   --color-warn-ground: #3a1e1b;
