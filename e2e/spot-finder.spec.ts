@@ -179,13 +179,6 @@ test.describe("on a desktop", () => {
     await expect(brandon.locator('[data-bar="wind"]')).toBeVisible();
     await expect(brandon.locator('[data-bar="stars"]')).toBeVisible();
     await expect(brandon.locator("[data-shown-tick]").first()).toBeAttached();
-    // The map's two modes at its foot: Spots, pressed, and Chart.
-    const modes = page.locator("[data-panel-modes]");
-    await expect(modes.getByRole("button", { name: "Spots" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    await expect(modes.getByRole("button", { name: "Chart" })).toBeVisible();
     expect(errors).toEqual([]);
   });
 
@@ -347,7 +340,7 @@ test.describe("on a desktop", () => {
     await expect(
       cards(page).getByRole("link", { name: "Brandon Bay" }),
     ).toHaveAttribute("href", "/spot/brandon");
-    await page.locator("[data-panel-chart]").click();
+    await page.getByRole("button", { name: "Full chart" }).click();
     await expect(page.locator('.workspace[data-chart="full"]')).toBeVisible({
       timeout: 30000,
     });
@@ -384,7 +377,7 @@ test.describe("on a desktop", () => {
     // Not asked yet: told why the place is wanted, and the spots nearest the
     // middle of Ireland meanwhile, with no distance that is not the rider's.
     await expect(page.locator("[data-finder-ask]")).toContainText(
-      "Nearby lists the spots within 30 km of where you are.",
+      "Your location lists those within 30 km.",
     );
     await expect(cards(page)).toHaveCount(12, { timeout: 30000 });
     await expect(cards(page).filter({ hasText: / km · / })).toHaveCount(0);
@@ -628,7 +621,7 @@ test.describe("on a desktop", () => {
     await useMyLocation(page);
     await expect(page.locator("[data-finder-ask]")).toHaveCount(0);
     await expect(page.locator("[data-finder-note]")).toHaveText(
-      "We don’t know where you are, so these are the spots nearest the middle of Ireland.",
+      "Nearest the middle of Ireland.",
     );
     await expect(page.locator("[data-finder-empty]")).toHaveCount(0);
     // No distance from a place the rider is not at.
@@ -781,7 +774,7 @@ test.describe("on a desktop", () => {
     });
     await expect(cards(page)).toHaveCount(12);
     await expect(page.locator("[data-finder-note]")).toHaveText(
-      "We don’t know where you are, so these are the spots nearest the part of the chart you last looked at.",
+      "Nearest the part of the chart you last looked at.",
     );
     await expect
       .poll(() =>
@@ -1031,8 +1024,26 @@ test.describe("on a desktop", () => {
   });
 });
 
-test.describe("on a narrower desktop", () => {
+test.describe("on a window with no chart beside the list", () => {
   test.use({ viewport: { width: 1000, height: 900 } });
+
+  test("two cards a row, so a card's hours never stretch across it", async ({
+    page,
+  }) => {
+    await star(page, ["brandon", "dollymount"]);
+    await openFinder(page);
+    await expect(cards(page)).toHaveCount(2);
+    const [a, b] = [
+      (await cards(page).nth(0).boundingBox())!,
+      (await cards(page).nth(1).boundingBox())!,
+    ];
+    expect(b.y).toBe(a.y);
+    expect(b.x).toBeGreaterThan(a.x + a.width);
+  });
+});
+
+test.describe("on a narrower window", () => {
+  test.use({ viewport: { width: 800, height: 900 } });
 
   test("one card a row, under the room two need", async ({ page }) => {
     await star(page, ["brandon", "dollymount"]);

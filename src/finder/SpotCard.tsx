@@ -68,7 +68,7 @@ export const cardStyles = tv({
     body: "flex min-w-0 flex-col gap-2",
     head: "flex items-center gap-2",
     names: "flex min-w-0 flex-1 flex-col",
-    name: "m-0 min-w-0 truncate font-body text-prose font-semibold text-ink",
+    name: "m-0 line-clamp-2 min-w-0 font-body text-prose leading-tight font-semibold text-ink",
     nameLink:
       "rounded-control text-ink no-underline not-disabled:hover:text-chart-magenta",
     meta: "truncate font-body text-body text-ink-muted",

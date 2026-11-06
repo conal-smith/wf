@@ -30,6 +30,8 @@ import {
   todayRow,
   withStars,
   type Listed,
+  bestHourOn,
+  nextBestHour,
 } from "./finder";
 
 const spot = (id: string, lat: number, lon: number): Spot => ({
@@ -609,5 +611,48 @@ describe("the list's order and its stars", () => {
     expect(ids(withStars(list, 0))).toEqual(["b", "k", "d", "u"]);
     expect(ids(withStars(list, 4))).toEqual(["b", "d"]);
     expect(ids(withStars(list, 5))).toEqual(["b"]);
+  });
+});
+
+describe("the list's best hour", () => {
+  const T = Date.parse("2026-11-06T12:00:00Z");
+  const strip = [
+    { time: T, date: "2026-11-06" },
+    { time: T + HOUR, date: "2026-11-06" },
+    { time: T + 72 * HOUR, date: "2026-11-09" },
+  ];
+  const rated = (stars: number) =>
+    ({ rating: { stars }, windKn: 14 }) as unknown as PlaceHour;
+  const a = { id: "a" } as Spot;
+  const b = { id: "b" } as Spot;
+
+  it("is the most stars, at the first hour they come", () => {
+    const hours = new Map([
+      ["a", [rated(2), rated(3), undefined]],
+      ["b", [undefined, rated(3), undefined]],
+    ]);
+    expect(bestHourOn([a, b], hours, strip, "2026-11-06", T)).toEqual({
+      spot: a,
+      stars: 3,
+      time: T + HOUR,
+      date: "2026-11-06",
+    });
+  });
+
+  it("leaves out the hours gone", () => {
+    const hours = new Map([["a", [rated(4), rated(1), undefined]]]);
+    expect(bestHourOn([a], hours, strip, "2026-11-06", T + HOUR)?.stars).toBe(
+      1,
+    );
+  });
+
+  it("is null on a day with no stars, and the next day that has them says so", () => {
+    const hours = new Map([["b", [rated(0), rated(0), rated(4)]]]);
+    expect(bestHourOn([b], hours, strip, "2026-11-06", T)).toBeNull();
+    const dates = ["2026-11-06", "2026-11-07", "2026-11-08", "2026-11-09"];
+    expect(
+      nextBestHour([b], hours, strip, dates, "2026-11-06", T),
+    ).toMatchObject({ spot: b, stars: 4, date: "2026-11-09" });
+    expect(nextBestHour([b], hours, strip, dates, "2026-11-09", T)).toBeNull();
   });
 });

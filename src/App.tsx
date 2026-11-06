@@ -16,7 +16,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { CloudOff, Maximize2, Waves, X } from "lucide-react";
+import { CloudOff, Maximize2, X } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Empty } from "../ui/Empty";
 import { SpotSearch } from "../ui/SpotSearch";
@@ -2527,26 +2527,6 @@ export default function App() {
                       {panelWhen}
                     </span>
                   )}
-                  <div
-                    className="panel-modes"
-                    role="group"
-                    aria-label="The map"
-                    data-panel-modes
-                  >
-                    <Button variant="outline" size="sm" pressed>
-                      Spots
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="panel-chart"
-                      onClick={openChart}
-                      data-panel-chart
-                    >
-                      <Waves size={15} strokeWidth={1.75} aria-hidden="true" />
-                      Chart
-                    </Button>
-                  </div>
                 </div>
               )}
               {onChart && (

@@ -1896,22 +1896,6 @@
 }
 /* The map's two modes at its foot, as the mock-up has them: the plain map
    with the spots, and the chart, which opens the full chart with its layers. */
-.panel-modes {
-  position: absolute;
-  left: 50%;
-  bottom: 16px;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 6px;
-  padding: 5px;
-  border-radius: 999px;
-  background: var(--color-ground);
-  box-shadow: var(--shadow-float);
-}
-.panel-modes .panel-chart {
-  gap: 7px;
-  border-color: transparent;
-}
 .panel-when {
   position: absolute;
   left: 12px;

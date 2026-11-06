@@ -363,6 +363,62 @@ export function bestStars(
   return best;
 }
 
+/** A list's best hour: the spot, how many stars, and when. */
+export interface BestHour<S extends Spot = Spot> {
+  spot: S;
+  stars: number;
+  time: number;
+  date: string;
+}
+
+/**
+ * The most stars any of `spots` has on a day, from the hour now on, at the
+ * first hour they have them; among places level, the first on the list. Null
+ * with no stars that day.
+ */
+export function bestHourOn<S extends Spot>(
+  spots: readonly S[],
+  hours: ReadonlyMap<string, readonly (PlaceHour | null | undefined)[]>,
+  strip: readonly Pick<StripColumn, "time" | "date">[],
+  date: string,
+  now: number,
+): BestHour<S> | null {
+  const current = hourOf(now);
+  let best: BestHour<S> | null = null;
+  for (const spot of spots) {
+    const row = hours.get(spot.id);
+    if (!row) continue;
+    strip.forEach((column, at) => {
+      if (column.date !== date || column.time < current) return;
+      const stars = starsAt(row[at]);
+      if (!stars) return;
+      if (
+        !best ||
+        stars > best.stars ||
+        (stars === best.stars && column.time < best.time)
+      )
+        best = { spot, stars, time: column.time, date };
+    });
+  }
+  return best;
+}
+
+/** The first of `dates` after `date` that any of `spots` has stars on. */
+export function nextBestHour<S extends Spot>(
+  spots: readonly S[],
+  hours: ReadonlyMap<string, readonly (PlaceHour | null | undefined)[]>,
+  strip: readonly Pick<StripColumn, "time" | "date">[],
+  dates: readonly string[],
+  date: string,
+  now: number,
+): BestHour<S> | null {
+  for (const later of dates.slice(dates.indexOf(date) + 1)) {
+    const best = bestHourOn(spots, hours, strip, later, now);
+    if (best) return best;
+  }
+  return null;
+}
+
 /** A place on the list: how far it is, and its best on the day shown. */
 export interface Listed<S extends Spot = Spot> {
   spot: S;
