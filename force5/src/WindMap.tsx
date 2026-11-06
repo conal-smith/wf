@@ -7,6 +7,8 @@ import type {
 } from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { beaufortPath } from "../../ui/beaufortPath";
+import { Button } from "../../ui/Button";
+import { Notice } from "../../ui/Notice";
 import {
   BATHY_PATH,
   CHART_BOUNDS,
@@ -874,7 +876,7 @@ export default function WindMap(props: Props) {
         !basemapLoaded &&
         (source === "omt" || url.includes(TILES_URL.replace("https://", "")))
       )
-        setError("The chart could not load. Check your connection and reload.");
+        setError("Check your connection and try again.");
     });
     map.on("load", () => {
       clearTimeout(loadTimeout);
@@ -1699,9 +1701,19 @@ export default function WindMap(props: Props) {
         </div>
       )}
       {error && (
-        <div className="map-error" role="alert">
-          <span>{error}</span>
-          <button onClick={() => location.reload()}>Reload map</button>
+        <div className="map-error">
+          <Notice
+            level="warn"
+            alert
+            title="The chart could not be loaded"
+            action={
+              <Button size="sm" onClick={() => location.reload()}>
+                Try again
+              </Button>
+            }
+          >
+            {error}
+          </Notice>
         </div>
       )}
     </>

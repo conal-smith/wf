@@ -39,6 +39,12 @@ export const noticeStyles = tv({
       water: { mark: "bg-warn-ground text-pen-ink" },
       "water-advice": { mark: "bg-raised text-depth" },
     },
+    // In a narrow column: the action under the words, not squeezing them.
+    stacked: {
+      true: {
+        end: "col-span-2 col-start-1 row-span-1 row-start-3 mt-2.5 justify-self-start",
+      },
+    },
   },
   defaultVariants: { level: "info" },
 });
@@ -76,6 +82,8 @@ export interface NoticeProps {
   detailsLabel?: string;
   /** An action on the right in place of the chevron: Try again. */
   action?: ReactNode;
+  /** The action under the words, for a column too narrow to hold it beside them. */
+  stacked?: boolean;
   /**
    * Interrupts a screen reader: something went wrong just now. A notice that
    * was there when the page came (a weather warning) does not.
@@ -92,10 +100,11 @@ export function Notice({
   defaultOpen = false,
   detailsLabel = "Details",
   action,
+  stacked = false,
   alert = false,
   className,
 }: NoticeProps) {
-  const styles = noticeStyles({ level });
+  const styles = noticeStyles({ level, stacked });
   const [open, setOpen] = useState(defaultOpen);
   const detailsId = useId();
   const Icon = ICON[level];

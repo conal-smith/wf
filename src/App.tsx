@@ -16,8 +16,9 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Maximize2, Waves, X } from "lucide-react";
+import { CloudOff, Maximize2, Waves, X } from "lucide-react";
 import { Button } from "../ui/Button";
+import { Empty } from "../ui/Empty";
 import { SpotSearch } from "../ui/SpotSearch";
 import { StarGlyphs } from "../ui/StarGlyphs";
 import { TopBar } from "../ui/TopBar";
@@ -433,7 +434,7 @@ export default function App() {
    * moment of "no spot".
    */
   const [opened, setOpened] = useState(false);
-  const [error, setError] = useState("");
+  const [failed, setFailed] = useState(false);
   const [frameError, setFrameError] = useState("");
   const [retry, setRetry] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(
@@ -586,13 +587,7 @@ export default function App() {
           if (first === "harmonie" || controller.signal.aborted) throw e;
           return loadManifest("harmonie", controller.signal);
         }
-      })().catch((e) => {
-        throw e instanceof ManifestUnavailableError
-          ? new Error(
-              "The forecast snapshot is missing. Run npm run weather:refresh:harmonie, then reload.",
-            )
-          : e;
-      }),
+      })(),
       // Started by the page's head on a map URL (force5/src/boot.ts).
       (
         takeEarly(spotsUrl) ??
@@ -634,10 +629,16 @@ export default function App() {
         if (linked) setFocusId(linked.id);
       })
       .catch((e) => {
-        if (!controller.signal.aborted)
-          setError(
-            e instanceof Error ? e.message : "Unable to open forecast data.",
-          );
+        if (controller.signal.aborted) return;
+        // What went wrong is for whoever runs the site, in the console. A
+        // rider is told what they can do about it (the state below).
+        console.error(e);
+        if (
+          import.meta.env.MODE === "development" &&
+          e instanceof ManifestUnavailableError
+        )
+          console.info("Fetch a run: npm run weather:refresh:harmonie");
+        setFailed(true);
       });
     return () => controller.abort();
   }, []);
@@ -665,7 +666,7 @@ export default function App() {
     );
     observer.observe(dock.current);
     return () => observer.disconnect();
-  }, [error, !!manifest]);
+  }, [failed, !!manifest]);
 
   /* ---- the published blend, and the models only when they are wanted ---- */
   const spotBlend = useSpotBlend(!!pendingModel);
@@ -2366,7 +2367,7 @@ export default function App() {
         } as React.CSSProperties
       }
     >
-      {!error && (
+      {!failed && (
         <Button
           variant="outline"
           size="sm"
@@ -2378,14 +2379,33 @@ export default function App() {
           {skip.label}
         </Button>
       )}
-      {error ? (
-        <main className="fatal-error chart-box">
-          <h1>The forecast isn’t ready yet.</h1>
-          <p role="alert">{error}</p>
-          <button className="primary-button" onClick={() => location.reload()}>
-            Try again
-          </button>
-        </main>
+      {failed ? (
+        <>
+          {topBar}
+          <main className="forecast-failed">
+            <Empty
+              as="h1"
+              alert
+              title="The forecast could not be loaded"
+              icon={<CloudOff size={24} strokeWidth={1.75} />}
+              actions={
+                <>
+                  <Button variant="primary" onClick={() => location.reload()}>
+                    Try again
+                  </Button>
+                  <Button variant="quiet" href="/spot">
+                    All places
+                  </Button>
+                </>
+              }
+            >
+              <p className="m-0">
+                Check your connection. If it is fine, the latest forecast is
+                late reaching us, so try again in a few minutes.
+              </p>
+            </Empty>
+          </main>
+        </>
       ) : (
         <>
           {topBar}
@@ -2794,7 +2814,7 @@ export default function App() {
           )}
         </Suspense>
       )}
-      {!error && gustDue && FEATURES.gust && page === "chart" && (
+      {!failed && gustDue && FEATURES.gust && page === "chart" && (
         <Suspense fallback={null}>
           <Companion
             context={{

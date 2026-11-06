@@ -78,6 +78,13 @@ export const MISSING_SPOT: PageHead = {
   url: `${SITE}/spot`,
 };
 
+/** The head of the site's missing page, which every unknown address gets. */
+export const MISSING_PAGE: PageHead = {
+  title: pageTitle("Page not found", "Wind map"),
+  description: "This address is not a page on wingfoil.ie.",
+  url: SITE,
+};
+
 /**
  * The head for `pathname`, or null where the map's own (index.html) stands:
  * the map, an unknown spot, and every path not named here.

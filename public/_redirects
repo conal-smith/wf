@@ -18,8 +18,9 @@
 #
 # The target is `/`, not `/index.html`: Cloudflare Pages answers /index.html
 # with a 308 to `/`, so a rule rewriting to it sent every exact section URL
-# (/market, /stars …) to the map instead. public/404.html keeps Pages from its
-# own single-page fallback, which would answer every unknown path with a 200.
+# (/market, /stars …) to the map instead. The 404.html the build writes
+# (vite.config.ts, `missingPage`) keeps Pages from its own single-page fallback,
+# which would answer every unknown path with a 200.
 #
 # Hosts that do not read this file ignore it: `vite preview` has the fallback
 # built in, and the Caddyfile does it with `try_files {path} /index.html`.

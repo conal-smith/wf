@@ -365,7 +365,7 @@ export function validateManifest(m: Manifest): Manifest {
     (!m.frames.length && !m.ensemble) ||
     !Number.isFinite(Date.parse(m.runTime))
   )
-    throw new Error("Invalid forecast manifest. Run npm run weather:refresh.");
+    throw new Error("Invalid forecast manifest.");
   validateRunPointer(m);
   if (
     !m.frames.length &&

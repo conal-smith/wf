@@ -27,7 +27,29 @@ import {
   isMarketPath,
   isSwitchedOffPath,
   OWN_BUNDLE_PATHS,
+  isMissingPath,
 } from "./siteNav";
+
+describe("isMissingPath", () => {
+  it("is an address nothing answers", () => {
+    expect(isMissingPath("/no/such/page")).toBe(true);
+    expect(isMissingPath("/404.html")).toBe(true);
+    expect(isMissingPath("/marketplace-of-ideas")).toBe(true);
+  });
+  it("is not the root, a section or the finder's old address", () => {
+    for (const path of [
+      "/",
+      "/index.html",
+      "/market",
+      "/community/t/1",
+      "/ai",
+      "/spot/brandon",
+      "/stars",
+      "/spots",
+    ])
+      expect(isMissingPath(path), path).toBe(false);
+  });
+});
 
 describe("OWN_BUNDLE_PATHS", () => {
   const claimed = (path: string) => OWN_BUNDLE_PATHS.some((p) => p.test(path));

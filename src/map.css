@@ -387,14 +387,47 @@
   stroke-width: 4px;
   stroke-linejoin: round;
 }
+/* The chart's own background did not load: the kit's notice, floating over
+   what is left of the map. */
+.map-error {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  transform: translate(-50%, -50%);
+  z-index: 8;
+  width: min(420px, calc(100% - 32px));
+  border-radius: var(--radius-surface);
+  background: var(--color-ground);
+  box-shadow: var(--shadow-float);
+}
+:root[data-theme="dark"] .map-error {
+  box-shadow:
+    var(--shadow-float),
+    0 0 0 1px var(--color-line);
+}
+.map-error > div {
+  background: var(--color-ground);
+}
+/* The forecast did not load: the state under the usual top bar. */
+.forecast-failed {
+  position: absolute;
+  inset: 64px 0 0;
+  overflow-y: auto;
+  background: var(--color-ground);
+}
+@media (max-width: 719px) {
+  .forecast-failed {
+    inset: 56px 0 0;
+  }
+}
+
 @keyframes chart-fade {
   from {
     opacity: 0;
   }
 }
 
-.map-loading,
-.map-error {
+.map-loading {
   position: absolute;
   left: 50%;
   top: 40%;
@@ -410,18 +443,12 @@
   gap: 12px;
   align-items: center;
 }
-:root[data-theme="dark"] .map-loading,
-:root[data-theme="dark"] .map-error {
+:root[data-theme="dark"] .map-loading {
   box-shadow:
     var(--shadow-float),
     0 0 0 1px var(--color-line);
 }
-.map-error {
-  color: var(--color-warn);
-}
-.map-error button,
-.frame-status button,
-.primary-button {
+.frame-status button {
   border: 0;
   border-radius: var(--radius-control);
   background: var(--color-sunken);
@@ -431,9 +458,7 @@
   cursor: pointer;
 }
 @media (hover: hover) and (pointer: fine) {
-  .map-error button:hover,
-  .frame-status button:hover,
-  .primary-button:hover {
+  .frame-status button:hover {
     background: color-mix(in srgb, var(--color-ink) 10%, var(--color-sunken));
   }
 }

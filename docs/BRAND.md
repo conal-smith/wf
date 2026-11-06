@@ -211,9 +211,16 @@ card), `NoticeMark` is the same square with one word beside it ("Water",
 "Orange warning"). `alert` is for something that went wrong just now; a
 warning that was there when the page came is not one.
 
-**Empty.** `Empty` stands where a list would be when there is nothing to
-list: centred, with no frame, a round grey icon, an Inter title, a line or
-two, and at most two buttons. A load error is a `Notice` with Try again.
+**Empty, missing and failed.** One state system, always inside the usual top
+bar and the rider's theme. `Empty` stands where a list or a page would be
+when there is nothing to show: centred, with no frame, a round grey icon, an
+Inter title, a line or two, and at most two buttons. A page that is not
+there, and a page that could not load (`alert`, with Try again), are `Empty`
+too; the site's missing page and the forecast's failure are not pages of
+their own. A part of a page that could not load is a `Notice` with Try again,
+and the rest of the page stays; in a narrow column its action goes under the
+words (`stacked`). Over the map it is the same notice, floating. The words
+say what a rider can do, never what a developer would run.
 
 **Dialog.** `Dialog` and `ConfirmDialog`: the ground with a sheet's corner
 and the sheet's shadow, no frame and no rule under the title; the title in

@@ -236,6 +236,7 @@ export function Rail({ state, reload, current, className, id }: RailProps) {
         <Notice
           level="warn"
           alert
+          stacked
           title="The channels could not be loaded"
           action={
             <Button size="sm" onClick={reload}>
