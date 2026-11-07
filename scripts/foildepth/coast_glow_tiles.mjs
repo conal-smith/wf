@@ -28,7 +28,9 @@ const tileY = (lat) => {
 
 let written = 0;
 for (const area of index.areas.filter((a) => a.minzoom <= zoom)) {
-  const archive = new PMTiles(new FetchSource(`${base}${index.base}${area.url}`));
+  const archive = new PMTiles(
+    new FetchSource(`${base}${index.base}${area.url}`),
+  );
   const [west, south, east, north] = area.bounds;
   for (let x = tileX(west); x <= tileX(east); x += 1)
     for (let y = tileY(north); y <= tileY(south); y += 1) {
