@@ -305,6 +305,18 @@ export const OWN_BUNDLE_PATHS: readonly RegExp[] = [
   SPOT_PATH,
 ];
 
+/**
+ * An address nothing on the site answers: not the root, no section and not
+ * the finder's old address. The entry point draws the site's own missing page
+ * there, in the usual top bar. A path with a file behind it never reaches the
+ * app, so this only sees what a host fell back on.
+ */
+export function isMissingPath(pathname: string): boolean {
+  if (pathname === "/" || pathname === "/index.html") return false;
+  if (isOldFinderPath(pathname)) return false;
+  return !OWN_BUNDLE_PATHS.some((path) => path.test(pathname));
+}
+
 /** The page that adds the forecast to an AI assistant. */
 export const AI_HREF = "/ai";
 

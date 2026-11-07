@@ -21,7 +21,7 @@ import {
   currentUnits,
   type CurrentReading,
 } from "../../../force5/src/currentReading";
-import { loupeRose, roseScale } from "../../../force5/src/focus";
+import { faintRose, loupeRose, roseScale } from "../../../force5/src/focus";
 import { modelName } from "../../../force5/src/lead";
 import { modelEntry, modelHue } from "../../../force5/src/manifests";
 import { POINT_SOURCE_KM } from "../../../force5/src/pointSource";
@@ -59,7 +59,13 @@ import {
   useSpotCurrents,
   type SpotCurrents,
 } from "../../../shared/web/useSpotCurrents";
-import { NoticeMark, Segmented } from "../../../ui";
+import {
+  Button,
+  Disclosure,
+  NoticeMark,
+  Segmented,
+  StarGlyphs,
+} from "../../../ui";
 import type { NightHours } from "../../../force5/src/prefs";
 import {
   afterDark,
@@ -83,6 +89,8 @@ import {
   daySun,
   dayNames,
   dublinDate,
+  nextStarWindow,
+  type StarWindow,
   dublinHour,
   dublinMidnight,
   groupDays,
@@ -125,7 +133,10 @@ import {
 } from "./blends";
 import { spotSquare } from "../../../force5/src/spotData";
 import { useWaveBlend } from "../../../shared/web/useWaveBlend";
-import { waveBlendHours, type WavePartHour } from "../../../force5/src/waveBlend";
+import {
+  waveBlendHours,
+  type WavePartHour,
+} from "../../../force5/src/waveBlend";
 import { PhotoLoupe } from "./PhotoLoupe";
 import {
   besideMark,
@@ -165,14 +176,22 @@ const styles = tv({
     nearName: "font-body text-body font-semibold whitespace-nowrap",
     nearLine:
       "flex items-center gap-2 font-body text-body whitespace-nowrap text-ink-2",
-    now: "grid gap-3 rail:grid-cols-now rail:gap-4 xwide:grid-cols-now-wide",
+    // The next stars, first: when, how many and the wind, in figures.
+    next: "flex flex-wrap items-center gap-x-3 gap-y-1 rounded-surface bg-sunken on-card px-4 py-3 font-body text-prose text-ink wide:px-5",
+    nextName: "text-body font-medium text-ink-muted",
+    nextWhen: "font-semibold tabular-nums",
+    nextWind: "text-ink-2 tabular-nums",
+    nextGo: "ml-auto",
+    now: "grid gap-3 rail:grid-cols-now rail:gap-4",
     column: "flex min-w-0 flex-col gap-5",
     cards: "grid grid-cols-2 content-start gap-3",
     card: "min-w-0 rounded-surface bg-sunken on-card p-4 wide:px-5",
     wide: "col-span-2",
+    // Two lines held on a phone, so no hour's words move what is under them.
+    lineHeld: "max-wide:min-h-11",
     big: "my-2 flex flex-wrap items-baseline gap-1.5 font-body text-big-sm text-ink wide:text-big",
     unit: "font-body text-prose font-medium text-ink-2",
-    gust: "font-body text-lead font-semibold text-gust",
+    gust: "font-body text-lead font-semibold text-gust-ink",
     line: "font-body text-prose text-ink-2",
     off: "text-pen",
     bar: "mt-1 mb-2 h-1.5 overflow-hidden rounded-full bg-line",
@@ -200,7 +219,7 @@ const styles = tv({
     small: "font-body text-caption font-normal text-ink-muted",
     spark: "block h-7 w-full",
     dayFoot:
-      "flex items-center justify-between font-body text-caption text-ink-muted",
+      "flex flex-wrap items-center justify-between gap-x-1 font-body text-caption text-ink-muted",
     tools: [
       "my-4 flex flex-wrap items-center justify-between gap-2.5",
       // On a phone the readout stays in view over the graph, which is
@@ -212,12 +231,12 @@ const styles = tv({
     // on a phone.
     readout: [
       "grid w-full grid-flow-row-dense grid-cols-4 items-start gap-x-3 gap-y-1.5",
-      "wide:grid-cols-readout wide:gap-x-5 wide:gap-y-2.5",
+      "wide:grid-cols-readout wide:gap-x-4 wide:gap-y-2.5",
     ],
     // As wide as the widest hour it says ("Wed 16:00"), so "Now" and every
     // hour after it hold the same place.
     chip: "inline-block min-w-24 justify-self-start rounded-full bg-inverse px-3 py-1 text-center font-body text-body font-semibold whitespace-nowrap text-ink-inverse tabular-nums",
-    chipNow: "bg-pen text-ground",
+    chipNow: "bg-transparent px-0 text-left text-ink",
     ro: "grid min-w-0 gap-px",
     roWide: "col-span-2",
     // On a phone, where the stars take two cells, the sea's two follow the
@@ -244,7 +263,7 @@ const styles = tv({
     // still in view, rather than going under it.
     glBand: "absolute inset-x-0",
     glName: [
-      "block h-4 pl-2 font-body text-caption leading-4 font-medium whitespace-nowrap text-ink-muted wide:pl-4",
+      "block h-4 pl-1.5 font-body text-caption leading-4 font-medium whitespace-nowrap text-ink-muted wide:pl-4",
       "max-wide:sticky",
     ],
     graph:
@@ -265,8 +284,7 @@ const styles = tv({
     ],
     // The swells and the wind sea: three to a row on a phone, each two
     // cells wide in the desktop's grid.
-    parts:
-      "col-span-4 grid grid-cols-3 gap-x-3 gap-y-1.5 wide:contents",
+    parts: "col-span-4 grid grid-cols-3 gap-x-3 gap-y-1.5 wide:contents",
     // A blend in the phone's readout: each model's value at the hour, and
     // the blend's apart after a line.
     strip: "flex items-end justify-between gap-1.5",
@@ -506,6 +524,7 @@ export function SpotReport({
     opening === null ? null : rows[opening].time,
   );
   const [view, setView] = useState<"graph" | "table">("graph");
+  const [tidePicked, setTide] = useState<PictureTide | null>(null);
   const [dayAt, setDayAt] = useState(() => {
     if (opening === null) return 0;
     const date = dublinDate(rows[opening].time);
@@ -530,15 +549,10 @@ export function SpotReport({
     () => (point ? [] : modelSeries(rows, blendModels)),
     [rows, blendModels, point],
   );
-  const [scrollTo, setScrollTo] = useState<{ day: number; at: number } | null>(
-    null,
-  );
+  const [scrollTo, setScrollTo] = useState<WeekMove | null>(null);
   // The models' blend, said in the Wind blend band alone: the headline wind
   // and the stars stay the one model's own.
-  const blend = useMemo(
-    () => windBlend(rows),
-    [rows],
-  );
+  const blend = useMemo(() => windBlend(rows), [rows]);
   // The waves: one model's own at each hour, the rider's or the finest, with
   // the published wave blend beside them where it has the place (a point's
   // are the riding place's it borrows them from).
@@ -564,8 +578,37 @@ export function SpotReport({
   const seaShown =
     sheltered === false && waves.rows.some((r) => r !== null) ? waves : null;
 
+  const nextStars = useMemo(() => nextStarWindow(rows, now), [rows, now]);
   const nowRow = rowAt(rows, now);
+  const dayStrip = useDayInView(dayAt);
   const shown = focus === null ? nowRow : rowAt(rows, focus);
+  // The one hour the top of the page reads, the picture and the cards alike:
+  // the hour picked in the week, or now.
+  const heroAtNow = shown === nowRow;
+  const heroAt = heroAtNow || !shown ? now : shown.time;
+  const heroSun =
+    days.find((d) => d.day.date === dublinDate(heroAt))?.sun ??
+    days[0]?.sun ??
+    null;
+  // Pressed in the cards: the week lets go of its pinned hour (Graph).
+  const [backToNow, setBackToNow] = useState(0);
+  // A day pressed: the whole page goes to it, at the hour the rider has picked
+  // on the clock, else midday, as the finder opens a day. Today is the hour now.
+  const chooseDay = (i: number) => {
+    const date = days[i].day.date;
+    setDayAt(i);
+    setTide(null);
+    if (date === dublinDate(now)) {
+      setFocus(null);
+      setBackToNow(Date.now());
+      setScrollTo({ day: i, at: Date.now(), time: null });
+      return;
+    }
+    const clock = focus === null ? 12 : dublinHour(focus);
+    const time = rowAt(rows, dublinMidnight(date) + clock * HOUR)?.time ?? null;
+    setFocus(time);
+    setScrollTo({ day: i, at: Date.now(), time });
+  };
   const scale = useMemo(() => roseScale(units), [units]);
   // At Now the picture's rose says the wind the station measured, as the
   // Wind now card and the readout do; a reading with no direction has no
@@ -599,19 +642,32 @@ export function SpotReport({
           units,
         )
       : null;
+  const loupeWind = loupeMeasured
+    ? {
+        windKn: loupeMeasured.reading.windKn,
+        from: loupeMeasured.reading.from!,
+      }
+    : {
+        windKn: shown?.hour.wind?.wind_kn ?? null,
+        from: shown?.hour.wind?.direction_deg ?? null,
+      };
+  const loupeFaint = faintRose(
+    rider,
+    { ...loupeWind, daylight: !!shown?.hour.daylight },
+    facing,
+  );
   const loupeShore = loupeMeasured
     ? measuredShore(loupeMeasured, facing)
     : shown?.shore;
   const heights = turns.map((t) => t.height);
-  const tideNow = tideAt(now);
-  const tideNowAt: PictureTide =
-    tideNow !== null &&
+  const tideHere = tideAt(heroAt);
+  const tideShown: PictureTide =
+    tideHere !== null &&
     heights.length &&
-    tideNow > (Math.max(...heights) + Math.min(...heights)) / 2
+    tideHere > (Math.max(...heights) + Math.min(...heights)) / 2
       ? "high"
       : "low";
-  const [tidePicked, setTide] = useState<PictureTide | null>(null);
-  const tide = tidePicked ?? tideNowAt;
+  const tide = tidePicked ?? tideShown;
 
   return (
     <UnitsContext.Provider value={units}>
@@ -624,7 +680,7 @@ export function SpotReport({
           <div className={s.acts()}>{actions}</div>
         </section>
         {nearby.length > 0 && (
-          <section className="xwide:hidden" aria-label="Nearby">
+          <section className="cards:hidden" aria-label="Nearby">
             <div className={s.sectionHead({ className: "mb-2.5" })}>
               <span className={s.label()}>Nearby</span>
               <a className={s.link()} href={CHART_HREF}>
@@ -641,7 +697,31 @@ export function SpotReport({
           </section>
         )}
 
+        {!point && (
+          <NextStars
+            window={nextStars}
+            now={now}
+            onShow={(time) => {
+              const date = dublinDate(time);
+              const day = days.findIndex((d) => d.day.date === date);
+              if (day >= 0) {
+                setDayAt(day);
+                setScrollTo({ day, at: Date.now(), time });
+              }
+              setFocus(time);
+              setView("graph");
+              document
+                .getElementById("the-week")
+                ?.scrollIntoView({ behavior: "smooth" });
+            }}
+          />
+        )}
+
         <section className={s.section({ className: "pt-5" })} aria-label="Now">
+          {/* The warnings and notices over everything else in the section,
+              the width of the page, so the cards and the picture beside them
+              come out the same height. */}
+          {notices && <div className="mb-3 rail:mb-4">{notices}</div>}
           {/* With no picture (a point on the water never has one) the cards
               take the room: one column, the template left out rather than
               overridden, since a later class does not undo an earlier one
@@ -652,27 +732,30 @@ export function SpotReport({
                 ? "grid gap-3 rail:gap-4"
                 : s.now({
                     className: nearby.length
-                      ? undefined
-                      : "xwide:grid-cols-now",
+                      ? "xwide:grid-cols-now-wide"
+                      : undefined,
                   })
             }
           >
-            {/* The warnings and notices above the cards, in their column. */}
             <div className={s.column()}>
-              {notices}
               <NowCards
                 forecast={forecast}
                 sea={forecast.sea_temperature}
-                row={nowRow}
+                row={shown}
+                at={heroAt}
                 now={now}
-                sun={days[0]?.sun ?? null}
-                tideNow={tideNow}
+                sun={heroSun}
+                tideHere={tideHere}
                 turns={turns}
                 depthAt={depthAt}
                 hasBed={!!bed}
                 rated={!point}
                 facing={facing}
-                measured={nowMeasured}
+                measured={heroAtNow ? nowMeasured : null}
+                onBackToNow={() => {
+                  setFocus(null);
+                  setBackToNow(Date.now());
+                }}
               />
             </div>
             {picture && (
@@ -680,6 +763,7 @@ export function SpotReport({
                 picture={picture}
                 tide={tide}
                 loupe={loupe}
+                faint={loupeFaint}
                 facing={facing}
                 scale={scale}
                 className={s.photo()}
@@ -702,18 +786,33 @@ export function SpotReport({
                 >
                   {loupe ? (
                     <>
+                      {!heroAtNow && (
+                        <>
+                          <span>
+                            {dayNames(dublinDate(heroAt), heroAt).short}{" "}
+                            {clock(heroAt)}
+                          </span>
+                          <span>·</span>
+                        </>
+                      )}
                       {loupe.reading.replace(/ g(\d+)$/, "")}
                       {/ g\d+$/.test(loupe.reading) && (
                         <span className={s.footGust()}>
                           g{loupe.reading.match(/ g(\d+)$/)![1]}
                         </span>
                       )}
-                      <span>·</span>
-                      <span
-                        className={loupe.warn ? "text-photo-red" : undefined}
-                      >
-                        {shoreWord(loupeShore) ?? loupe.relation.toLowerCase()}
-                      </span>
+                      {shoreWord(loupeShore) && (
+                        <>
+                          <span>·</span>
+                          <span
+                            className={
+                              loupe.warn ? "text-photo-red" : undefined
+                            }
+                          >
+                            {shoreWord(loupeShore)}
+                          </span>
+                        </>
+                      )}
                     </>
                   ) : (
                     "No wind reading"
@@ -756,17 +855,19 @@ export function SpotReport({
               ]}
             />
           </div>
-          <div className={s.week()} role="group" aria-label="Days">
+          <div
+            ref={dayStrip}
+            className={s.week()}
+            role="group"
+            aria-label="Days"
+          >
             {cards.map((card, i) => (
               <DayButton
                 key={card.date}
                 card={card}
                 rated={!point}
                 on={i === dayAt}
-                onClick={() => {
-                  setDayAt(i);
-                  setScrollTo({ day: i, at: Date.now() });
-                }}
+                onClick={() => chooseDay(i)}
               />
             ))}
           </div>
@@ -779,8 +880,9 @@ export function SpotReport({
               bed={bed}
               depthAt={depthAt}
               onFocus={setFocus}
+              backToNow={backToNow}
               scrollTo={scrollTo}
-              opening={opening}
+              opening={focus === null ? opening : rowIndexAt(rows, focus)}
               dark={dark}
               rider={rider}
               rated={!point}
@@ -836,7 +938,16 @@ export function SpotReport({
             </div>
           </section>
         )}
-        {!point && <ClimateSections spotId={spot.id} units={units} />}
+        {!point && (
+          <section className={s.section()}>
+            <Disclosure
+              title="The wind and waves through the year"
+              data-disclosure="year"
+            >
+              <ClimateSections spotId={spot.id} units={units} />
+            </Disclosure>
+          </section>
+        )}
         <div className={s.smallPrint()}>
           <p className="m-0">
             Model forecasts, not a safety statement. Look at the water before
@@ -852,6 +963,8 @@ export function SpotReport({
             </a>
             .{" "}
             <span data-water-quality-source>
+              {forecast.water_quality.status === "unavailable" &&
+                "Bathing water notices cannot be read just now, so none are taken into account here. "}
               Bathing water notices: the EPA,{" "}
               <a
                 className={s.link({ className: "text-caption" })}
@@ -873,6 +986,66 @@ export function SpotReport({
 
 const km = (distance: number) =>
   distance < 10 ? distance.toFixed(1) : String(Math.round(distance));
+
+/**
+ * The first thing on the page: the next hours with stars, in figures. It says
+ * when and how many, and leaves the reading to the rider (the information
+ * rule); the button puts those hours under the graph's readout.
+ */
+function NextStars({
+  window: next,
+  now,
+  onShow,
+}: {
+  window: StarWindow | null;
+  now: number;
+  onShow: (time: number) => void;
+}) {
+  const s = styles();
+  const speed = useSpeed();
+  if (!next)
+    return (
+      <p className={s.next({ className: "m-0" })} data-next-stars>
+        <span className={s.nextName()}>No stars in the days ahead</span>
+      </p>
+    );
+  const running = next.from <= now;
+  const day = dayNames(dublinDate(next.from), now).short;
+  const same = next.low === next.high;
+  return (
+    <section
+      className={s.next()}
+      aria-label={running ? "Stars now" : "Next stars"}
+      data-next-stars
+    >
+      <span className={s.nextName()}>
+        {running ? "Stars now" : "Next stars"}
+      </span>
+      <StarGlyphs stars={next.stars} size={14} coloured />
+      <span className={s.nextWhen()}>
+        {running
+          ? `until ${clock(next.to)}`
+          : `${day} ${clock(next.from)}–${clock(next.to)}`}
+      </span>
+      {next.low !== null && next.high !== null && (
+        <span className={s.nextWind()}>
+          {same
+            ? speed.say(next.low)
+            : `${speed.say(next.low)}–${speed.say(next.high)}`}{" "}
+          {speed.unit}
+        </span>
+      )}
+      <Button
+        variant="quiet"
+        size="sm"
+        className={s.nextGo()}
+        onClick={() => onShow(next.from)}
+      >
+        Show {dayNames(dublinDate(next.from), now).long}
+      </Button>
+    </section>
+  );
+}
 
 /**
  * Under a point's name: that it is open water, and the riding place nearest
@@ -1035,22 +1208,27 @@ function NowCards({
   forecast,
   sea,
   row,
+  at,
   now,
   sun,
-  tideNow,
+  tideHere,
   turns,
   depthAt,
   hasBed,
   rated,
   facing,
   measured,
+  onBackToNow,
 }: {
   forecast: SpotForecast;
   sea: SpotSea | null;
+  /** The hour the cards read: now's, or the one picked in the week. */
   row: SpotRow | null;
+  at: number;
   now: number;
+  /** The sun on `at`'s day. */
   sun: DaySun | null;
-  tideNow: number | null;
+  tideHere: number | null;
   turns: ReturnType<typeof tideTurns>;
   depthAt: (t: number) => number | null;
   hasBed: boolean;
@@ -1064,10 +1242,15 @@ function NowCards({
    * readout at Now does.
    */
   measured: MeasuredReading | null;
+  onBackToNow: () => void;
 }) {
   const speed = useSpeed();
   const s = styles();
-  // The wind now: the station's, while it has one fresh, else the forecast's.
+  const atNow = at === now;
+  const hourName = atNow
+    ? "now"
+    : `${dayNames(dublinDate(at), at).short} ${clock(at)}`;
+  // The wind at the hour: at now the station's, while it has one fresh, else the forecast's.
   const wind = measured
     ? {
         kn: measured.reading.windKn,
@@ -1083,10 +1266,10 @@ function NowCards({
       : null;
   const shore = measured ? measuredShore(measured, facing) : row?.shore;
   const waves = row?.hour.waves ?? null;
-  const depth = depthAt(now);
-  const until = deepUntil(depthAt, now);
-  const left = sun ? lightLeft(now, sun) : null;
-  const nextTurn = turns.find((t) => t.time > now);
+  const depth = depthAt(at);
+  const until = deepUntil(depthAt, at);
+  const left = sun ? lightLeft(at, sun) : null;
+  const nextTurn = turns.find((t) => t.time > at);
   const taken = row && !row.rating ? standIn(row) : null;
   const watered = (row?.water?.ids ?? [])
     .map((id) => forecast.water_quality.items.find((item) => item.id === id))
@@ -1094,8 +1277,19 @@ function NowCards({
   return (
     <div className={s.cards()} data-now>
       <div className={s.card({ className: s.wide() })}>
+        {!atNow && (
+          <Button
+            variant="quiet"
+            size="sm"
+            className="float-right -mt-1.5 -mr-2"
+            onClick={onBackToNow}
+            data-back-to-now
+          >
+            Back to now
+          </Button>
+        )}
         <span className={s.label()} data-now-wind-label>
-          Wind now
+          {atNow ? "Wind now" : `Wind, ${hourName}`}
           {measured && (
             <span className={s.roSource()} data-now-source>
               {" "}
@@ -1131,9 +1325,14 @@ function NowCards({
             </div>
           </>
         ) : (
-          <div className={s.line({ className: "mt-2" })}>
-            No model reaches this spot just now.
-          </div>
+          <>
+            <div className={s.big()}>–</div>
+            <div className={s.line()}>
+              {atNow
+                ? "No model reaches this spot just now."
+                : "No model reaches this spot at this hour."}
+            </div>
+          </>
         )}
       </div>
       {!rated ? (
@@ -1142,7 +1341,9 @@ function NowCards({
           <div className={s.line({ className: "my-3.5 min-h-7" })}>
             No stars on open water
           </div>
-          <div className={s.line()}>Stars rate the wind at a shore</div>
+          <div className={s.line({ className: s.lineHeld() })}>
+            Stars rate the wind at a shore
+          </div>
         </div>
       ) : (
         <div className={s.card()} data-your-stars>
@@ -1157,10 +1358,12 @@ function NowCards({
                   : taken.word}
               </NoticeMark>
             ) : (
-              <span className={s.line()}>No stars now</span>
+              <span className={s.line()}>
+                {atNow ? "No stars now" : "No stars"}
+              </span>
             )}
           </div>
-          <div className={s.line()}>
+          <div className={s.line({ className: s.lineHeld() })}>
             {row?.rating
               ? `${row.rating.wing.own ?? row.rating.wing.recommended} m² wing`
               : taken
@@ -1171,35 +1374,37 @@ function NowCards({
           </div>
         </div>
       )}
-      {hasBed && depth !== null ? (
+      {hasBed && (depth !== null || !atNow) ? (
         <div className={s.card()}>
           <span className={s.label()}>Water at the launch</span>
           <div className={s.big()}>
-            {depth.toFixed(1)}
+            {depth === null ? "–" : depth.toFixed(1)}
             <span className={s.unit()}>m</span>
           </div>
           <div className={s.bar()}>
             <span
               className={s.barFill()}
-              style={{ width: `${Math.min(100, (depth / 3) * 100)}%` }}
+              style={{ width: `${Math.min(100, ((depth ?? 0) / 3) * 100)}%` }}
             />
           </div>
-          <div className={s.line()}>
-            {depth < 1
-              ? "Under 1 m now"
-              : until
-                ? `Deep enough until ${clock(until)}`
-                : "Deep enough"}
+          <div className={s.line({ className: s.lineHeld() })}>
+            {depth === null
+              ? "No tide reading"
+              : depth < 1
+                ? "Under 1 m"
+                : until
+                  ? `Deep until ${clock(until)}`
+                  : "Deep enough"}
           </div>
         </div>
       ) : (
         <div className={s.card()}>
           <span className={s.label()}>Tide</span>
           <div className={s.big()}>
-            {tideNow === null ? "–" : tideNow.toFixed(1)}
+            {tideHere === null ? "–" : tideHere.toFixed(1)}
             <span className={s.unit()}>m</span>
           </div>
-          <div className={s.line()}>
+          <div className={s.line({ className: s.lineHeld() })}>
             {nextTurn
               ? `${nextTurn.tide === "high" ? "High" : "Low"} at ${clock(nextTurn.time)}`
               : "No tide station near"}
@@ -1212,13 +1417,13 @@ function NowCards({
           {waves?.height_m == null ? "–" : waves.height_m.toFixed(1)}
           <span className={s.unit()}>m</span>
         </div>
-        <div className={s.line()}>
+        <div className={s.line({ className: s.lineHeld() })}>
           {waves?.period_s
             ? `${waves.period_s} s`
             : waves
               ? ""
               : "No wave model here"}
-          {sea && (
+          {sea && atNow && (
             <span
               data-sea-temperature
               title={`Measured ${observationAge((now - Date.parse(sea.time)) / 3600000)} at the ${sea.station} ${NETWORK_LABEL[sea.network as SeaTemperatureNetwork] ?? "station"}, ${sea.distance_km < 10 ? sea.distance_km.toFixed(1) : Math.round(sea.distance_km)} km from here`}
@@ -1238,15 +1443,15 @@ function NowCards({
               {String(hoursMinutes(left).m).padStart(2, "0")}
               <span className={s.unit()}>min</span>
             </div>
-            <div className={s.line()}>
+            <div className={s.line({ className: s.lineHeld() })}>
               {sun?.sunset ? `Sunset ${clock(sun.sunset)}` : ""}
             </div>
           </>
         ) : (
           <>
             <div className={s.big()}>Dark</div>
-            <div className={s.line()}>
-              {sun?.firstLight && now < sun.firstLight
+            <div className={s.line({ className: s.lineHeld() })}>
+              {sun?.firstLight && at < sun.firstLight
                 ? `First light ${clock(sun.firstLight)}`
                 : "Until morning"}
             </div>
@@ -1255,6 +1460,31 @@ function NowCards({
       </div>
     </div>
   );
+}
+
+/** Where a day or the next stars sends the week: that day, at that hour. */
+interface WeekMove {
+  day: number;
+  at: number;
+  /** The hour to hold, or null to stand at now. */
+  time: number | null;
+}
+
+/** Keeps the chosen day in view along the strip, on opening and after. */
+function useDayInView(dayAt: number) {
+  const strip = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const row = strip.current;
+    const card = row?.children[dayAt] as HTMLElement | undefined;
+    if (!row || !card) return;
+    const left = card.offsetLeft - row.offsetLeft;
+    if (
+      left < row.scrollLeft ||
+      left + card.offsetWidth > row.scrollLeft + row.clientWidth
+    )
+      row.scrollLeft = left - (row.clientWidth - card.offsetWidth) / 2;
+  }, [dayAt]);
+  return strip;
 }
 
 function DayButton({
@@ -1349,11 +1579,11 @@ function DayButton({
         )}
         <span>
           {card.sure === "high"
-            ? "Sure"
+            ? "Models agree"
             : card.sure === "moderate"
               ? "Fairly sure"
               : card.sure === "low"
-                ? "Unsure"
+                ? "Models differ"
                 : ""}
         </span>
       </span>
@@ -1409,6 +1639,8 @@ const WAVE_BANDS = [
   ["windsea", 38, 14],
 ] as const;
 type WaveBand = (typeof WAVE_BANDS)[number][0];
+/** A swell or wind sea lower than this, in metres, reads as none. */
+const MIN_TRAIN_M = 0.15;
 const WAVE_NAME: Record<WaveBand, string> = {
   waves: "Waves",
   wdir: "Direction",
@@ -1530,6 +1762,7 @@ function Graph({
   bed,
   depthAt,
   onFocus,
+  backToNow,
   scrollTo,
   opening,
   dark,
@@ -1551,7 +1784,9 @@ function Graph({
   bed: LaunchBed | null;
   depthAt: (t: number) => number | null;
   onFocus: (t: number | null) => void;
-  scrollTo: { day: number; at: number } | null;
+  /** Changes when the top of the page lets go of the hour picked here. */
+  backToNow: number;
+  scrollTo: WeekMove | null;
   /** The row the address opens on (`?at=`), held as a pointer would hold it. */
   opening: number | null;
   /**
@@ -1747,8 +1982,16 @@ function Graph({
   useEffect(() => {
     if (!scrollTo || !ref.current) return;
     driver.current = ref.current;
+    const row = scrollTo.time === null ? null : rowIndexAt(rows, scrollTo.time);
+    if (row !== null) {
+      setPinned(row);
+      setHover(row);
+    }
     ref.current.scrollTo({
-      left: X(days[scrollTo.day]?.midnight ?? start),
+      left:
+        phone && row !== null
+          ? Math.max(0, leftFor(mid(rows[row])))
+          : X(days[scrollTo.day]?.midnight ?? start),
       behavior: "smooth",
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1759,23 +2002,50 @@ function Graph({
   // middle, and rides out to the right edge over the last, so every hour
   // can be put under it.
   const phone = width < 600;
-  const reach = W - width;
-  const headAt = (left: number) =>
-    reach < width
-      ? (left / Math.max(1, reach)) * W
-      : left < width / 2
-        ? 2 * left
-        : left > reach - width / 2
-          ? 2 * left - reach + width
-          : left + width / 2;
-  const leftFor = (x: number) =>
-    reach < width
-      ? (x / W) * reach
-      : x < width
-        ? x / 2
-        : x > reach
-          ? (x + reach - width) / 2
-          : x - width / 2;
+  // How far the hours are scrolled on a phone, where a note whose line has
+  // gone off the left edge would be cut in two: it goes with its line.
+  const [scrolled, setScrolled] = useState(0);
+  // The keys stand open on a wide window, and wait to be asked for on a phone,
+  // where they would push the rest of the page down a screen each.
+  const [keyOpen] = useState(
+    () =>
+      typeof window === "undefined" ||
+      !window.matchMedia ||
+      window.matchMedia("(min-width: 600px)").matches,
+  );
+  // Nothing is drawn before the first hour, so on a phone the hours start
+  // there, at the screen's left, and not half a screen of empty graph in.
+  const firstX = phone
+    ? Math.max(0, X(Math.min(rows[0]?.time ?? now, now)) - 8)
+    : 0;
+  const span = W - firstX;
+  const reach = span - width;
+  const headAt = (scrolled: number) => {
+    const left = Math.max(0, scrolled - firstX);
+    return (
+      firstX +
+      (reach < width
+        ? (left / Math.max(1, reach)) * span
+        : left < width / 2
+          ? 2 * left
+          : left > reach - width / 2
+            ? 2 * left - reach + width
+            : left + width / 2)
+    );
+  };
+  const leftFor = (at: number) => {
+    const x = Math.max(0, at - firstX);
+    return (
+      firstX +
+      (reach < width
+        ? (x / span) * reach
+        : x < width
+          ? x / 2
+          : x > reach
+            ? (x + reach - width) / 2
+            : x - width / 2)
+    );
+  };
   const rowAtX = (x: number) => {
     const t = line.time((x / px) * HOUR);
     let at = rows.findIndex(seen);
@@ -1792,8 +2062,9 @@ function Graph({
       ? // The hour the address opens on, else now, under the playhead.
         Math.max(0, leftFor(opened ? mid(opened) : X(now)))
       : // The hour the address opens on, a third of the way in, as the
-        // hours before it are worth a glance; else now, six hours in.
-        Math.max(0, opened ? X(opened.time) - width / 3 : X(now) - px * 6);
+        // hours before it are worth a glance; else now, an hour in: the
+        // morning is a scroll back.
+        Math.max(0, opened ? X(opened.time) - width / 3 : X(now) - px);
     for (const el of scrollers()) el.scrollLeft = left;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [px, !!waves]);
@@ -1819,11 +2090,14 @@ function Graph({
     const b = box.getBoundingClientRect();
     const v = svg.getBoundingClientRect();
     const right = v.left + X(r.time) + r.step * px - b.left;
-    const left = right + 14 + CARD_WIDTH <= b.width - 8
-      ? right + 14
-      : Math.max(8, v.left + X(r.time) - b.left - 14 - CARD_WIDTH);
+    const left =
+      right + 14 + CARD_WIDTH <= b.width - 8
+        ? right + 14
+        : Math.max(8, v.left + X(r.time) - b.left - 14 - CARD_WIDTH);
     const tall =
-      CARD_ROW * ((at === "wind" ? models.length : (waves?.lines.length ?? 0)) + 3) + 40;
+      CARD_ROW *
+        ((at === "wind" ? models.length : (waves?.lines.length ?? 0)) + 3) +
+      40;
     return {
       section: at,
       left,
@@ -1835,16 +2109,17 @@ function Graph({
     // A section scrolled a moment after the other last moved is following
     // it; one scrolled after a pause is being moved itself, and leads.
     const at = performance.now();
-    if (el !== driver.current && at - drove.current > 150)
-      driver.current = el;
+    if (el !== driver.current && at - drove.current > 150) driver.current = el;
     if (el === driver.current) {
       drove.current = at;
       for (const other of scrollers())
         if (other !== el && other.scrollLeft !== el.scrollLeft)
           other.scrollLeft = el.scrollLeft;
     }
-    if (phone) setHover(rowAtX(headAt(el.scrollLeft)));
-    else if (pointer.current) {
+    if (phone) {
+      setHover(rowAtX(headAt(el.scrollLeft)));
+      setScrolled(el.scrollLeft);
+    } else if (pointer.current) {
       const row = rowAtX(
         pointer.current.x -
           el.getBoundingClientRect().left -
@@ -1852,8 +2127,7 @@ function Graph({
           el.scrollLeft,
       );
       setHover(row);
-      if (wide)
-        setCard(place(pointer.current.section, row, pointer.current.y));
+      if (wide) setCard(place(pointer.current.section, row, pointer.current.y));
     }
   };
   const windRows = rows.filter((r) => r.hour.wind && seen(r));
@@ -1951,6 +2225,13 @@ function Graph({
   );
   const ay = lower.axis;
   const hoverRow = hover === null ? null : rows[hover];
+  useEffect(() => {
+    if (!backToNow) return;
+    setPinned(null);
+    setHover(null);
+    if (phone) for (const el of scrollers()) el.scrollLeft = leftFor(X(now));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backToNow]);
   // Now, or with the night left out and now in it, the next first light.
   const nowRow = useMemo(() => {
     const row = rowAt(rows, now);
@@ -1980,13 +2261,12 @@ function Graph({
   };
   /** The arrow keys step the hour, a day with Shift, and hold it. */
   const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    const by =
-      e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    const by = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
     if (!by) return;
     e.preventDefault();
     const from = shownAt < 0 ? rows.findIndex(seen) : shownAt;
     let next = from;
-    for (let n = e.shiftKey ? 24 : 1; n > 0; ) {
+    for (let n = e.shiftKey ? 24 : 1; n > 0;) {
       const i = next + by;
       if (i < 0 || i >= rows.length) break;
       next = i;
@@ -2004,7 +2284,10 @@ function Graph({
     setHover(next);
     const el = e.currentTarget;
     const x = X(row.time);
-    if (x < el.scrollLeft + 40 || x + row.step * px > el.scrollLeft + width - 40)
+    if (
+      x < el.scrollLeft + 40 ||
+      x + row.step * px > el.scrollLeft + width - 40
+    )
       el.scrollLeft = Math.max(0, x - width / 3);
   };
   // Now is said as now, however it came to be under the playhead.
@@ -2028,7 +2311,8 @@ function Graph({
     <Readout
       row={shownRow}
       chip={desktop ? chip : null}
-      depth={shownRow ? depthAt(shownRow.time) : null}
+      // At now, the moment the card above says, not its hour's start.
+      depth={shownRow ? depthAt(isNow ? now : shownRow.time) : null}
       rated={rated}
       gust={
         shownRow?.hour.wind
@@ -2205,8 +2489,9 @@ function Graph({
         x2={X(now)}
         y1={4}
         y2={axis}
-        className="stroke-pen"
+        className="stroke-ink-2"
         strokeWidth={1.5}
+        data-now-line
       />
       {hoverRow && (
         <>
@@ -2237,8 +2522,11 @@ function Graph({
   );
   const waveStack = waves
     ? stack(WAVE_BANDS, 10, (band) =>
+        // A train that stays under this all week has no row of its own.
         band in WAVE_PART
-          ? waves.rows.some((r) => partOf(r, band as PartRow))
+          ? waves.rows.some(
+              (r) => (partOf(r, band as PartRow)?.heightM ?? 0) >= MIN_TRAIN_M,
+            )
           : true,
       )
     : null;
@@ -2288,7 +2576,9 @@ function Graph({
               <div
                 className={s.pane({
                   className:
-                    section === "wind" ? "visible opacity-100" : "invisible opacity-0",
+                    section === "wind"
+                      ? "visible opacity-100"
+                      : "invisible opacity-0",
                 })}
                 aria-hidden={section !== "wind"}
                 data-pane="wind"
@@ -2299,7 +2589,9 @@ function Graph({
                 <div
                   className={s.pane({
                     className:
-                      section === "waves" ? "visible opacity-100" : "invisible opacity-0",
+                      section === "waves"
+                        ? "visible opacity-100"
+                        : "invisible opacity-0",
                   })}
                   aria-hidden={section !== "waves"}
                   data-pane="waves"
@@ -2572,13 +2864,15 @@ function Graph({
                     className="stroke-ink-muted"
                     strokeDasharray="3 4"
                   />
-                  <text
-                    x={X(h.time) + 6}
-                    y={ROW.wind[0] + 6}
-                    className="fill-ink-muted font-body text-caption"
-                  >
-                    {modelName(h.to)} from here
-                  </text>
+                  {X(h.time) >= scrolled && (
+                    <text
+                      x={X(h.time) + 6}
+                      y={ROW.wind[0] + 6}
+                      className="fill-ink-muted font-body text-caption"
+                    >
+                      {modelName(h.to)} from here
+                    </text>
+                  )}
                 </g>
               ))}
               {marks(ay)}
@@ -2659,7 +2953,8 @@ function Graph({
                 return models.length > 1 && b
                   ? {
                       value: `${speed.say(b.kn)} ${speed.unit}`.trim(),
-                      range: `${speed.say(b.low)}–${speed.say(b.high)} ${speed.unit}`.trim(),
+                      range:
+                        `${speed.say(b.low)}–${speed.say(b.high)} ${speed.unit}`.trim(),
                     }
                   : null;
               })()}
@@ -2669,70 +2964,81 @@ function Graph({
         </div>
         {/* The key, in groups as the graph's bands run, each mark drawn as
             the graph draws it. */}
-        <div className={s.legend()} data-legend>
-          <KeyGroup name="Wind">
-            <KeyItem mark="wind">Wind</KeyItem>
-            <KeyItem mark="gust">Gust</KeyItem>
-            {readings.length > 0 && (
-              <KeyItem mark="measured" data-measured-key>
-                Measured at {pairedName(measured!)}, wind and gust
-              </KeyItem>
-            )}
-            {/* A point reads one model an hour: nothing to disagree. */}
-            {rated && <KeyItem mark="spread">Where models disagree</KeyItem>}
-          </KeyGroup>
-          {models.length > 0 && (
-            <KeyGroup
-              name={`Wind blend${speed.unit ? `, ${speed.unit}` : ""}`}
-              data-models-legend
-            >
-              {models.map((m) => {
-                const at = shownRow
-                  ? m.points.find((p) => p.time === shownRow.time)
-                  : undefined;
-                return (
+        <Disclosure
+          title="Key"
+          as="span"
+          small
+          defaultOpen={keyOpen}
+          className="px-1 pt-3 wide:px-4"
+          data-disclosure="wind-key"
+        >
+          <div className={s.legend()} data-legend>
+            <KeyGroup name="Wind">
+              <KeyItem mark="wind">Wind</KeyItem>
+              <KeyItem mark="gust">Gust</KeyItem>
+              {readings.length > 0 && (
+                <KeyItem mark="measured" data-measured-key>
+                  Measured at {pairedName(measured!)}, wind and gust
+                </KeyItem>
+              )}
+              {/* A point reads one model an hour: nothing to disagree. */}
+              {rated && <KeyItem mark="spread">Where models disagree</KeyItem>}
+            </KeyGroup>
+            {models.length > 0 && (
+              <KeyGroup
+                name={`Wind blend${speed.unit ? `, ${speed.unit}` : ""}`}
+                data-models-legend
+              >
+                {models.map((m) => {
+                  const at = shownRow
+                    ? m.points.find((p) => p.time === shownRow.time)
+                    : undefined;
+                  return (
+                    <KeyItem
+                      key={m.id}
+                      hue={modelHue(m.id).wind}
+                      dashed={DASHED.has(m.id)}
+                      figure={at ? speed.say(at.kn) : ""}
+                      data-model-key={m.id}
+                    >
+                      {modelName(m.id)}
+                    </KeyItem>
+                  );
+                })}
+                {models.length > 1 && (
                   <KeyItem
-                    key={m.id}
-                    hue={modelHue(m.id).wind}
-                    dashed={DASHED.has(m.id)}
-                    figure={at ? speed.say(at.kn) : ""}
-                    data-model-key={m.id}
+                    mark="blend"
+                    figure={(() => {
+                      const b = shownRow ? blend.get(shownRow.time) : undefined;
+                      return b ? speed.say(b.kn) : "";
+                    })()}
+                    data-model-key="blend"
                   >
-                    {modelName(m.id)}
+                    Blend
                   </KeyItem>
-                );
-              })}
-              {models.length > 1 && (
-                <KeyItem
-                  mark="blend"
-                  figure={(() => {
-                    const b = shownRow ? blend.get(shownRow.time) : undefined;
-                    return b ? speed.say(b.kn) : "";
-                  })()}
-                  data-model-key="blend"
-                >
-                  Blend
+                )}
+              </KeyGroup>
+            )}
+            {rated && (
+              <KeyGroup name="Gust factor">
+                <KeyItem mark="costs">Costs a star</KeyItem>
+                <KeyItem mark="over">Past too much: no stars</KeyItem>
+              </KeyGroup>
+            )}
+            <KeyGroup name="Sky and sea" wide>
+              {!dark && <KeyItem mark="dark">Dark</KeyItem>}
+              <KeyItem mark="rain">Rain, mm/h</KeyItem>
+              <KeyItem mark="current">
+                Current: where it runs, in {unitLabel(currentUnits(units))}
+              </KeyItem>
+              {deepAt !== null && (
+                <KeyItem mark="depth">
+                  1 m of water or more at the launch
                 </KeyItem>
               )}
             </KeyGroup>
-          )}
-          {rated && (
-            <KeyGroup name="Gusts">
-              <KeyItem mark="costs">Costs a star</KeyItem>
-              <KeyItem mark="over">Past too much: no stars</KeyItem>
-            </KeyGroup>
-          )}
-          <KeyGroup name="Sky and sea" wide>
-            {!dark && <KeyItem mark="dark">Dark</KeyItem>}
-            <KeyItem mark="rain">Rain, mm/h</KeyItem>
-            <KeyItem mark="current">
-              Current: where it runs, in {unitLabel(currentUnits(units))}
-            </KeyItem>
-            {deepAt !== null && (
-              <KeyItem mark="depth">1 m of water or more at the launch</KeyItem>
-            )}
-          </KeyGroup>
-        </div>
+          </div>
+        </Disclosure>
       </section>
       {waves && waveStack && (
         <section
@@ -2790,6 +3096,7 @@ function Graph({
                   hover={hover}
                   end={end}
                   handovers={waveHandovers(rows, waves).filter(seen)}
+                  scrolled={scrolled}
                 />
                 {marks(waveStack.axis)}
               </svg>
@@ -2802,7 +3109,8 @@ function Graph({
                 top={card.top}
                 rows={waves.lines.map((l) => {
                   const own = waveAt?.models[l.id];
-                  const before = shownRow.time + shownRow.step * HOUR <= l.first;
+                  const before =
+                    shownRow.time + shownRow.step * HOUR <= l.first;
                   return {
                     id: l.id,
                     mark: <ModelMark wave={l.id} />,
@@ -2842,59 +3150,70 @@ function Graph({
               />
             )}
           </div>
-          <div className={s.legend()} data-wave-legend>
-            <KeyGroup name="Waves">
-              <KeyItem mark="sea">
-                {waveModel === WAVE_BLEND
-                  ? "Wave height: the blend, the finest model where it has none"
-                  : waveModel
-                    ? `Wave height: ${waveModelName(waveModel)}, and the next model past its run`
-                    : "Wave height: the finest model at each hour"}
-              </KeyItem>
-              {waves.lines.length > 1 && (
-                <KeyItem mark="spread">Where models disagree</KeyItem>
-              )}
-              <KeyItem mark="waves">Arrow: where they run; figure: metres</KeyItem>
-            </KeyGroup>
-            <KeyGroup name="Wave blend, m" wide data-wave-models-legend>
-              {waves.lines.map((l) => {
-                const own = waveAt?.models[l.id];
-                const detail = modelEntry(l.id)?.detail;
-                return (
-                  <KeyItem
-                    key={l.id}
-                    stroke={waveHue(l.id).stroke}
-                    dashed={DASHED.has(l.id)}
-                    figure={own ? own.height_m.toFixed(1) : ""}
-                    data-model-key={l.id}
-                  >
-                    {waveModelName(l.id)}
-                    {detail && (
-                      <span className="text-ink-muted"> · {detail}</span>
-                    )}
-                  </KeyItem>
-                );
-              })}
-              {waves.blended && (
-                <KeyItem
-                  mark="blend"
-                  figure={
-                    waveAt?.blendM != null ? waveAt.blendM.toFixed(1) : ""
-                  }
-                  data-model-key="blend"
-                >
-                  Blend
+          <Disclosure
+            title="Key"
+            as="span"
+            small
+            defaultOpen={keyOpen}
+            className="px-1 pt-3 wide:px-4"
+            data-disclosure="wave-key"
+          >
+            <div className={s.legend()} data-wave-legend>
+              <KeyGroup name="Waves">
+                <KeyItem mark="sea">
+                  {waveModel === WAVE_BLEND
+                    ? "Wave height: the blend, the finest model where it has none"
+                    : waveModel
+                      ? `Wave height: ${waveModelName(waveModel)}, and the next model past its run`
+                      : "Wave height: the finest model at each hour"}
                 </KeyItem>
-              )}
-            </KeyGroup>
-            {PART_ROWS.some(([key]) => waveStack.at[key]) && (
-              <KeyGroup name="Swell">
-                <KeyItem mark="swell">
-                  Each train: how high, its period, where it runs
+                {waves.lines.length > 1 && (
+                  <KeyItem mark="spread">Where models disagree</KeyItem>
+                )}
+                <KeyItem mark="waves">
+                  Arrow: where they run; figure: metres
                 </KeyItem>
               </KeyGroup>
-            )}
-          </div>
+              <KeyGroup name="Wave blend, m" wide data-wave-models-legend>
+                {waves.lines.map((l) => {
+                  const own = waveAt?.models[l.id];
+                  const detail = modelEntry(l.id)?.detail;
+                  return (
+                    <KeyItem
+                      key={l.id}
+                      stroke={waveHue(l.id).stroke}
+                      dashed={DASHED.has(l.id)}
+                      figure={own ? own.height_m.toFixed(1) : ""}
+                      data-model-key={l.id}
+                    >
+                      {waveModelName(l.id)}
+                      {detail && (
+                        <span className="text-ink-muted"> · {detail}</span>
+                      )}
+                    </KeyItem>
+                  );
+                })}
+                {waves.blended && (
+                  <KeyItem
+                    mark="blend"
+                    figure={
+                      waveAt?.blendM != null ? waveAt.blendM.toFixed(1) : ""
+                    }
+                    data-model-key="blend"
+                  >
+                    Blend
+                  </KeyItem>
+                )}
+              </KeyGroup>
+              {PART_ROWS.some(([key]) => waveStack.at[key]) && (
+                <KeyGroup name="Swell">
+                  <KeyItem mark="swell">
+                    Each train: how high, its period, where it runs
+                  </KeyItem>
+                </KeyGroup>
+              )}
+            </div>
+          </Disclosure>
         </section>
       )}
     </>
@@ -3090,7 +3409,11 @@ function HoverCard({
           {rows.map((r) => (
             <tr
               key={r.id}
-              className={r.value === null || r.value === "ended" ? "text-ink-muted" : undefined}
+              className={
+                r.value === null || r.value === "ended"
+                  ? "text-ink-muted"
+                  : undefined
+              }
               data-card-model={r.id}
             >
               <td className="w-5 py-0.5">{r.mark}</td>
@@ -3793,6 +4116,7 @@ function WaveBands({
   hover,
   end,
   handovers,
+  scrolled,
 }: {
   rows: readonly SpotRow[];
   waves: WaveWeek;
@@ -3807,6 +4131,8 @@ function WaveBands({
   end: number;
   /** Where the headline's model changes (`waveHandovers`). */
   handovers: readonly { time: number; to: string }[];
+  /** How far the hours are scrolled: a note past the left edge goes. */
+  scrolled: number;
 }) {
   const mid = (r: Pick<SpotRow, "time" | "step">) =>
     X(r.time) + (r.step * px) / 2;
@@ -3903,7 +4229,8 @@ function WaveBands({
       {bands.waves &&
         (() => {
           const [y, h] = bands.waves;
-          const HY = (m: number) => y + h - (Math.min(m, most) / most) * (h - 4);
+          const HY = (m: number) =>
+            y + h - (Math.min(m, most) / most) * (h - 4);
           const runs = runsOf(at);
           const lines = runs.map((run) =>
             run.map((p) => [mid(p.row), HY(p.w.heightM!)] as const),
@@ -3942,13 +4269,15 @@ function WaveBands({
                     className="stroke-ink-muted"
                     strokeDasharray="3 4"
                   />
-                  <text
-                    x={X(change.time) + 6}
-                    y={y + 6}
-                    className={`fill-ink-muted ${caption}`}
-                  >
-                    {waveModelName(change.to)} from here
-                  </text>
+                  {X(change.time) >= scrolled && (
+                    <text
+                      x={X(change.time) + 6}
+                      y={y + 6}
+                      className={`fill-ink-muted ${caption}`}
+                    >
+                      {waveModelName(change.to)} from here
+                    </text>
+                  )}
                 </g>
               ))}
               {hovered && hoveredWave?.heightM != null && seen(hovered) && (
@@ -4005,9 +4334,7 @@ function WaveBands({
           return (
             <g data-band="period">
               {at
-                .filter(
-                  (p) => third(p.row) && !p.held && p.w.periodS !== null,
-                )
+                .filter((p) => third(p.row) && !p.held && p.w.periodS !== null)
                 .map(({ row, w }, i) => (
                   <text
                     key={i}
@@ -4026,7 +4353,8 @@ function WaveBands({
       {bands.wblend &&
         (() => {
           const [y, h] = bands.wblend;
-          const BY = (m: number) => y + h - (Math.min(m, most) / most) * (h - 4);
+          const BY = (m: number) =>
+            y + h - (Math.min(m, most) / most) * (h - 4);
           const blended = at
             .filter((p) => p.w.blendM !== null)
             .map((p) => ({ ...p, held: p.w.blendHeld }));
@@ -4115,13 +4443,15 @@ function WaveBands({
                         r={3}
                         className={waveHue(l.id).fill}
                       />
-                      <text
-                        x={x + 7}
-                        y={y + 6}
-                        className={`fill-ink-muted ${caption}`}
-                      >
-                        {waveEndName(l.id)} ends
-                      </text>
+                      {x >= scrolled && (
+                        <text
+                          x={x + 7}
+                          y={y + 6}
+                          className={`fill-ink-muted ${caption}`}
+                        >
+                          {waveEndName(l.id)} ends
+                        </text>
+                      )}
                     </g>
                   );
                 })}
@@ -4140,17 +4470,15 @@ function WaveBands({
                     />
                   ) : null;
                 })}
-              {hovered &&
-                seen(hovered) &&
-                hoveredWave?.blendM != null && (
-                  <circle
-                    cx={mid(hovered)}
-                    cy={BY(hoveredWave.blendM)}
-                    r={3.5}
-                    className="fill-ink stroke-ground"
-                    strokeWidth={1.5}
-                  />
-                )}
+              {hovered && seen(hovered) && hoveredWave?.blendM != null && (
+                <circle
+                  cx={mid(hovered)}
+                  cy={BY(hoveredWave.blendM)}
+                  r={3.5}
+                  className="fill-ink stroke-ground"
+                  strokeWidth={1.5}
+                />
+              )}
             </g>
           );
         })()}
@@ -4311,7 +4639,7 @@ function Readout({
               {speed.say(measured.reading.windKn)}
               {speed.gust(measured.reading.windKn, measured.reading.gustKn) !==
                 null && (
-                <span className="text-gust">
+                <span className="text-gust-ink">
                   {" "}
                   g
                   {speed.say(
@@ -4330,7 +4658,7 @@ function Readout({
             <>
               {speed.say(wind.wind_kn)}
               {gustKn !== null && (
-                <span className="text-gust"> g{speed.say(gustKn)}</span>
+                <span className="text-gust-ink"> g{speed.say(gustKn)}</span>
               )}{" "}
               {speed.unit} {compass(wind.direction_deg)}
             </>
@@ -4364,7 +4692,7 @@ function Readout({
       )}
       {strip}
       <div className={s.ro()} data-readout-gust>
-        <span className={s.roLabel()}>Gusts</span>
+        <span className={s.roLabel()}>Gust factor</span>
         <b
           className={s.roValue()}
           title={rated && gust ? GUST_WORDS[gust.kind] : undefined}
@@ -4425,7 +4753,10 @@ function Readout({
         </div>
       )}
       {hasCurrent && (
-        <div className={s.ro({ className: s.roWide() })} data-readout-current>
+        <div
+          className={s.ro({ className: `${s.roWide()} wide:col-span-1` })}
+          data-readout-current
+        >
           <span className={s.roLabel()}>Current</span>
           <b className={s.roValue()}>
             {current ? (
@@ -4501,16 +4832,17 @@ function WaveReadout({
 }) {
   const s = styles();
   const range =
-    waves && waves.lowM !== null && waves.highM !== null && waves.highM > waves.lowM
+    waves &&
+    waves.lowM !== null &&
+    waves.highM !== null &&
+    waves.highM > waves.lowM
       ? `${waves.lowM.toFixed(1)}–${waves.highM.toFixed(1)}`
       : null;
   return (
     <div className={s.readout()} data-wave-readout>
       {chip && <div className={s.ro()}>{chip}</div>}
       <div className={s.ro({ className: s.roWide() })} data-readout-waves>
-        <span className={s.roLabel()}>
-          Waves
-        </span>
+        <span className={s.roLabel()}>Waves</span>
         <b className={s.roValue()}>
           <SeaLine at={row ? waves : null} />
         </b>
@@ -4578,7 +4910,7 @@ function HourTable({
             <th className={s.th()}>{date ? dayNames(date, now).long : ""}</th>
             {rated && <th className={s.th()}>Stars</th>}
             <th className={s.th()}>Wind {speed.unit}</th>
-            <th className={s.th({ className: s.narrow() })}>Gusts</th>
+            <th className={s.th({ className: s.narrow() })}>Gust factor</th>
             <th className={s.th()}>From</th>
             {/* A point reads one model an hour: no range to give. */}
             {rated && (
@@ -4613,7 +4945,7 @@ function HourTable({
                     {w ? speed.say(w.wind_kn) : "–"}
                   </b>
                   {w && speed.gust(w.wind_kn, w.gust_kn) !== null && (
-                    <span className="text-gust">
+                    <span className="text-gust-ink">
                       {" "}
                       {speed.say(speed.gust(w.wind_kn, w.gust_kn)!)}
                     </span>
@@ -4622,7 +4954,7 @@ function HourTable({
                 <td
                   className={s.td({
                     className: `${s.narrow()} ${
-                      rated && g && g.kind !== "fine" ? "text-gust" : ""
+                      rated && g && g.kind !== "fine" ? "text-gust-ink" : ""
                     }`,
                   })}
                   title={rated && g ? GUST_WORDS[g.kind] : undefined}

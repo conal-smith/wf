@@ -91,9 +91,12 @@ const barsOn = (page: Page) =>
     .evaluateAll((els) => [
       ...new Set(els.map((el) => el.getAttribute("data-day-bars"))),
     ]);
-/** "Use my location": the one way the browser is asked where the rider is. */
-const useMyLocation = (page: Page) =>
-  page.getByRole("button", { name: "Use my location" }).click();
+/** "Use my location", in the filter sheet: the one way the browser is asked. */
+const useMyLocation = async (page: Page) => {
+  await openFilters(page);
+  await page.getByRole("button", { name: "Use my location" }).click();
+  await expect(page.getByRole("dialog", { name: "Filter" })).toHaveCount(0);
+};
 const cards = (page: Page) => page.locator("[data-spot-card]");
 const scope = (page: Page) => page.getByRole("group", { name: "Which spots" });
 /** The top bar's search, a combobox (ui/SpotSearch.tsx). */
@@ -179,13 +182,6 @@ test.describe("on a desktop", () => {
     await expect(brandon.locator('[data-bar="wind"]')).toBeVisible();
     await expect(brandon.locator('[data-bar="stars"]')).toBeVisible();
     await expect(brandon.locator("[data-shown-tick]").first()).toBeAttached();
-    // The map's two modes at its foot: Spots, pressed, and Chart.
-    const modes = page.locator("[data-panel-modes]");
-    await expect(modes.getByRole("button", { name: "Spots" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    await expect(modes.getByRole("button", { name: "Chart" })).toBeVisible();
     expect(errors).toEqual([]);
   });
 
@@ -331,7 +327,9 @@ test.describe("on a desktop", () => {
     await openFinder(page);
     await rated(page);
     // No way from a card to the chart: the chart is the top bar's.
-    await expect(cards(page).getByRole("button", { name: /on the chart$/ })).toHaveCount(0);
+    await expect(
+      cards(page).getByRole("button", { name: /on the chart$/ }),
+    ).toHaveCount(0);
     const keel = cards(page).filter({ hasText: "Keel Beach" });
     await keel.locator("[data-card-picture]").click();
     await expect(page).toHaveURL(/\/spot\/keel$/);
@@ -347,7 +345,7 @@ test.describe("on a desktop", () => {
     await expect(
       cards(page).getByRole("link", { name: "Brandon Bay" }),
     ).toHaveAttribute("href", "/spot/brandon");
-    await page.locator("[data-panel-chart]").click();
+    await page.getByRole("button", { name: "Full chart" }).click();
     await expect(page.locator('.workspace[data-chart="full"]')).toBeVisible({
       timeout: 30000,
     });
@@ -359,7 +357,7 @@ test.describe("on a desktop", () => {
     await expect(cards(page)).toHaveCount(3);
     await cards(page)
       .filter({ hasText: "Keel" })
-      .getByRole("button", { name: "Star Keel Beach" })
+      .getByRole("button", { name: "Save Keel Beach" })
       .click();
     await expect(cards(page)).toHaveCount(2);
     await expect(page).toHaveURL(/\/$/);
@@ -381,24 +379,22 @@ test.describe("on a desktop", () => {
     await expect(
       scope(page).getByRole("button", { name: "Nearby" }),
     ).toHaveAttribute("aria-pressed", "true");
-    // Not asked yet: told why the place is wanted, and the spots nearest the
-    // middle of Ireland meanwhile, with no distance that is not the rider's.
-    await expect(page.locator("[data-finder-ask]")).toContainText(
-      "Nearby lists the spots within 30 km of where you are.",
-    );
+    // Not asked yet: the spots nearest the middle of Ireland and nothing over
+    // them, with no distance that is not the rider's.
     await expect(cards(page)).toHaveCount(12, { timeout: 30000 });
+    await expect(
+      page.getByRole("button", { name: "Use my location" }),
+    ).toHaveCount(0);
     await expect(cards(page).filter({ hasText: / km · / })).toHaveCount(0);
     // Asked on the rider's word, and the browser said where they are.
     await useMyLocation(page);
     await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1, {
       timeout: 30000,
     });
-    await expect(page.locator("[data-finder-ask]")).toHaveCount(0);
     await expect(cards(page).first()).toContainText(/\d+ km.*Co\. /);
-    await expect(page.locator("[data-finder-note]")).toHaveCount(0);
     await scope(page).getByRole("button", { name: "Favourites" }).click();
     const empty = page.locator("[data-finder-empty]");
-    await expect(empty).toContainText("Star a spot and it shows here.");
+    await expect(empty).toContainText("Save a spot and it shows here.");
     await expect(cards(page)).toHaveCount(0);
     // And a way from it to a spot to star: the top bar's search, Nearby,
     // or every spot's page.
@@ -626,10 +622,6 @@ test.describe("on a desktop", () => {
     await expect(finder(page)).toHaveAttribute("data-scope", "near");
     await expect(cards(page)).toHaveCount(12, { timeout: 30000 });
     await useMyLocation(page);
-    await expect(page.locator("[data-finder-ask]")).toHaveCount(0);
-    await expect(page.locator("[data-finder-note]")).toHaveText(
-      "We don’t know where you are, so these are the spots nearest the middle of Ireland.",
-    );
     await expect(page.locator("[data-finder-empty]")).toHaveCount(0);
     // No distance from a place the rider is not at.
     await expect(cards(page).filter({ hasText: / km · / })).toHaveCount(0);
@@ -685,7 +677,6 @@ test.describe("on a desktop", () => {
       "Finding spots nearby…",
     );
     await expect(cards(page)).toHaveCount(12, { timeout: 30000 });
-    await expect(page.locator("[data-finder-note]")).toBeVisible();
     // A late answer still brings the spots round the rider.
     await page.evaluate(() =>
       (window as unknown as { answerWhere: () => void }).answerWhere(),
@@ -693,7 +684,6 @@ test.describe("on a desktop", () => {
     await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1, {
       timeout: 30000,
     });
-    await expect(page.locator("[data-finder-note]")).toHaveCount(0);
   });
 
   test("a rider with nothing within 30 km is told so", async ({
@@ -780,9 +770,6 @@ test.describe("on a desktop", () => {
       timeout: 30000,
     });
     await expect(cards(page)).toHaveCount(12);
-    await expect(page.locator("[data-finder-note]")).toHaveText(
-      "We don’t know where you are, so these are the spots nearest the part of the chart you last looked at.",
-    );
     await expect
       .poll(() =>
         page.evaluate(() =>
@@ -1031,8 +1018,26 @@ test.describe("on a desktop", () => {
   });
 });
 
-test.describe("on a narrower desktop", () => {
+test.describe("on a window with no chart beside the list", () => {
   test.use({ viewport: { width: 1000, height: 900 } });
+
+  test("two cards a row, so a card's hours never stretch across it", async ({
+    page,
+  }) => {
+    await star(page, ["brandon", "dollymount"]);
+    await openFinder(page);
+    await expect(cards(page)).toHaveCount(2);
+    const [a, b] = [
+      (await cards(page).nth(0).boundingBox())!,
+      (await cards(page).nth(1).boundingBox())!,
+    ];
+    expect(b.y).toBe(a.y);
+    expect(b.x).toBeGreaterThan(a.x + a.width);
+  });
+});
+
+test.describe("on a narrower window", () => {
+  test.use({ viewport: { width: 800, height: 900 } });
 
   test("one card a row, under the room two need", async ({ page }) => {
     await star(page, ["brandon", "dollymount"]);
@@ -1096,7 +1101,8 @@ test.describe("on a phone", () => {
     expect(heading.x).toBeGreaterThanOrEqual(tabs.x + tabs.width);
     expect(filter.x).toBeGreaterThanOrEqual(heading.x + heading.width);
     expect(filter.x + filter.width).toBeLessThanOrEqual(390);
-    const middle = (box: { y: number; height: number }) => box.y + box.height / 2;
+    const middle = (box: { y: number; height: number }) =>
+      box.y + box.height / 2;
     expect(Math.abs(middle(filter) - middle(tabs))).toBeLessThan(4);
   });
 
@@ -1128,13 +1134,13 @@ test.describe("on a phone", () => {
     await context.grantPermissions(["geolocation"]);
     await context.setGeolocation(DUBLIN);
     await openFinder(page);
-    await page.getByRole("button", { name: "Use my location" }).tap();
+    await useMyLocation(page);
     await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1, {
       timeout: 30000,
     });
     await scope(page).getByRole("button", { name: "Favourites" }).tap();
     await expect(page.locator("[data-finder-empty]")).toContainText(
-      "Star a spot and it shows here.",
+      "Save a spot and it shows here.",
     );
     await scope(page).getByRole("button", { name: "Nearby" }).tap();
     await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1);
@@ -1145,6 +1151,5 @@ test.describe("on a phone", () => {
   }) => {
     await openFinder(page);
     await expect(cards(page)).toHaveCount(12, { timeout: 30000 });
-    await expect(page.locator("[data-finder-note]")).toBeVisible();
   });
 });

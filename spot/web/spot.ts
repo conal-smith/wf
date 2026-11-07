@@ -307,6 +307,53 @@ export interface SpotRow {
   water?: HourWater | null;
 }
 
+/** A stretch of hours with stars: when, the most stars in it, and its wind. */
+export interface StarWindow {
+  from: number;
+  /** The end of its last hour. */
+  to: number;
+  stars: number;
+  /** The wind, lowest and highest, in knots; null where no hour says. */
+  low: number | null;
+  high: number | null;
+}
+
+/** How many stars make a window worth naming ahead of an earlier, lesser one. */
+const GOOD_STARS = 3;
+
+/**
+ * The next stretch of hours with stars, from the hour now on: the first with
+ * three stars or more, else the first with any. Null with none in the rows.
+ */
+export function nextStarWindow(
+  rows: readonly Pick<SpotRow, "time" | "step" | "rating" | "hour">[],
+  now: number,
+): StarWindow | null {
+  const runs: StarWindow[] = [];
+  let run: StarWindow | null = null;
+  for (const row of rows) {
+    const stars = row.rating?.stars ?? 0;
+    const end = row.time + row.step * HOUR;
+    if (end <= now || stars < 1) {
+      run = null;
+      continue;
+    }
+    const kn = row.hour.wind?.wind_kn ?? null;
+    if (!run) {
+      run = { from: row.time, to: end, stars, low: kn, high: kn };
+      runs.push(run);
+      continue;
+    }
+    run.to = end;
+    run.stars = Math.max(run.stars, stars);
+    if (kn !== null) {
+      run.low = run.low === null ? kn : Math.min(run.low, kn);
+      run.high = run.high === null ? kn : Math.max(run.high, kn);
+    }
+  }
+  return runs.find((r) => r.stars >= GOOD_STARS) ?? runs[0] ?? null;
+}
+
 /** Rate one forecast hour for a rider at a shore, from the one model's own wind. */
 export function rateForecastHour(
   hour: ForecastHour,
@@ -327,8 +374,9 @@ export function rateForecastHour(
 }
 
 /**
- * The hours that become rows: from the top of the current hour, every hour for
- * the first three days and every third Irish hour after that, where the models
+ * The hours that become rows: today whole, from Irish midnight (the ruling of
+ * 25 October 2026, so a rider can look back at the morning), every hour for
+ * three days from now and every third Irish hour after that, where the models
  * themselves step three-hourly and an hourly row would only be interpolation.
  */
 export function rowHours(
@@ -336,8 +384,8 @@ export function rowHours(
   now: number,
   hourlyAhead = HOURLY_AHEAD_HOURS,
 ): { hour: ForecastHour; time: number; step: number }[] {
-  const start = Math.floor(now / HOUR) * HOUR;
-  const fine = start + hourlyAhead * HOUR;
+  const start = dublinMidnight(dublinDate(now));
+  const fine = Math.floor(now / HOUR) * HOUR + hourlyAhead * HOUR;
   return hours.flatMap((hour) => {
     const time = Date.parse(hour.time);
     if (time < start) return [];

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ChartLayers } from "../force5/src/WindMap";
 import {
   LAYER_DEFAULTS,
+  excludeWashFoil,
   layerGroups,
   railGroups,
   type LayerChoices,
@@ -162,5 +163,33 @@ describe("railGroups", () => {
       "satellite",
       "focus-loupe",
     ]);
+  });
+});
+
+describe("coloured wind and the tidal depth", () => {
+  const wind = { wash: false, particles: true };
+  const washed = { wash: true, particles: true };
+  const layers = { ...LAYER_DEFAULTS.layers, foil: true };
+  const dry = { ...layers, foil: false };
+
+  it("turns the tidal depth off when coloured wind goes on", () => {
+    expect(excludeWashFoil(wind, layers, washed, layers).layers.foil).toBe(
+      false,
+    );
+  });
+
+  it("turns coloured wind off when the tidal depth goes on", () => {
+    expect(excludeWashFoil(washed, dry, washed, layers).wind.wash).toBe(false);
+  });
+
+  it("leaves the other alone when one goes off", () => {
+    expect(excludeWashFoil(washed, dry, wind, dry)).toEqual({
+      wind,
+      layers: dry,
+    });
+    expect(excludeWashFoil(wind, layers, wind, dry)).toEqual({
+      wind,
+      layers: dry,
+    });
   });
 });

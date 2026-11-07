@@ -9,7 +9,7 @@
  * /spot with no id is the index of every place, by county; /stars is "How
  * the stars work" (StarsPage.tsx), the bundle's other page.
  */
-import { MapPin } from "lucide-react";
+import { CloudOff, MapPin } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { starsFromAt } from "../../force5/src/lead";
 import { loadPrefs, saveRider } from "../../force5/src/prefs";
@@ -27,10 +27,10 @@ import { type RidingSpot, type SpotForecast } from "../../mcp/api/forecast";
 import { favourites } from "../../shared/web/favourites";
 import { onPrefsChange, signedInHint } from "../../shared/web/riderSync";
 import { usePageTitle } from "../../shared/web/usePageTitle";
-import { Button, Empty, Heading, Notice, Row, Rows, Skeleton } from "../../ui";
+import { Button, Empty, Heading, Row, Rows, Skeleton } from "../../ui";
 import { RING, tv } from "../../ui/tv";
 import { SpotFrame } from "./Frame";
-import { KeepStar } from "./glyphs";
+import { KeepHeart } from "./glyphs";
 import { loadSpotPictures } from "./satellite";
 import StarsPage from "./StarsPage";
 import { useSpotForecast } from "./useSpotForecast";
@@ -125,18 +125,30 @@ function SpotRoute({ id }: { id: string | null }) {
       {state.kind === "loading" && <Loading />}
       {state.kind === "error" && (
         <main className={s.main()}>
-          <Notice
-            level="info"
+          <Empty
+            as="h1"
             alert
-            title="The forecast could not be read just now"
-            action={
-              <Button size="sm" onClick={() => setAttempt((n) => n + 1)}>
-                Try again
-              </Button>
+            title="The forecast could not be loaded"
+            icon={<CloudOff size={24} strokeWidth={1.75} />}
+            actions={
+              <>
+                <Button
+                  variant="primary"
+                  onClick={() => setAttempt((n) => n + 1)}
+                >
+                  Try again
+                </Button>
+                <Button variant="quiet" href="/spot">
+                  All places
+                </Button>
+              </>
             }
           >
-            {state.message}
-          </Notice>
+            <p className="m-0">
+              Check your connection. If it is fine, the latest forecast is late
+              reaching us, so try again in a few minutes.
+            </p>
+          </Empty>
         </main>
       )}
       {state.kind === "unknown" && (
@@ -210,13 +222,13 @@ function KeepButton({ id, name }: { id: string; name: string }) {
   return (
     <Button
       pressed={on ? "worded" : false}
-      aria-label={on ? `Unstar ${name}` : `Star ${name}`}
+      aria-label={`Save ${name}`}
       data-keep-star
       onClick={() => setOn(store.toggle(id))}
     >
-      <KeepStar on={on} />
+      <KeepHeart on={on} />
       <span className={s.starWord()} aria-hidden="true">
-        {on ? "Starred" : "Star"}
+        {on ? "Saved" : "Save"}
       </span>
     </Button>
   );

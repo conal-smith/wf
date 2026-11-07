@@ -36,7 +36,7 @@ test("the week is a Wind section and a Waves section, each with its own readout"
   await expect(waveOut).toContainText("Swell 1");
   await expect(waveOut).toContainText("Swell 2");
   await expect(waveOut).toContainText("Wind sea");
-  await expect(waveOut).not.toContainText("Gusts");
+  await expect(waveOut).not.toContainText("Gust factor");
   // Sea and Waves have left the wind's bands for the waves'.
   await expect(wind.locator("[data-band-name]")).toHaveText([
     "Stars",
@@ -352,6 +352,7 @@ test("sheltered water has no Waves section, as it has no waves through the year"
 }) => {
   await page.goto("/spot/malahide-estuary");
   await expect(page.locator("[data-graph-svg]")).toBeVisible({ timeout: 30000 });
+  await page.locator('[data-disclosure="year"] summary').click();
   await expect(page.locator("[data-climate-sheltered]")).toBeAttached();
   await expect(page.locator('[data-week-section="waves"]')).toHaveCount(0);
   await expect(page.locator("[data-readout-sea]")).toHaveCount(0);
@@ -399,7 +400,7 @@ test.describe("on a phone", () => {
     await expect(windPane).toBeHidden();
     await expect(wavePane).toContainText("Wave blend");
     await expect(wavePane.locator("[data-strip-model]")).toHaveCount(5);
-    await expect(wavePane).not.toContainText("Gusts");
+    await expect(wavePane).not.toContainText("Gust factor");
     // Wind takes the page back to the wind's section, and the readout with it.
     await switcher.getByRole("button", { name: "Wind" }).click();
     await expect(windPane).toBeVisible();
@@ -422,6 +423,7 @@ test.describe("on a phone", () => {
   test("on sheltered water the readout has no switch", async ({ page }) => {
     await page.goto("/spot/malahide-estuary");
     await expect(page.locator("[data-graph-svg]")).toBeVisible({ timeout: 30000 });
+    await page.locator('[data-disclosure="year"] summary').click();
     await expect(page.locator("[data-climate-sheltered]")).toBeAttached();
     await expect(
       page.getByRole("group", { name: "What the readout shows" }),

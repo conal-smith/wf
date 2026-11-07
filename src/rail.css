@@ -2,7 +2,8 @@
  * The layers' rail (src/LayerRail.tsx): beside the zoom, a column of round
  * switches over the chart with no panel behind them. Off is a plain disc on
  * the ground with a small soft shadow; on is filled in ink. The groups are
- * set apart by space.
+ * set apart by space. A name shows for a moment, on the pointer, the keys'
+ * focus or a tap, and never stays.
  *
  * Where it would run into the dock (on a phone, most often) LayerRail gives
  * it a max-height and it scrolls. A scroller clips what stands out of it, so

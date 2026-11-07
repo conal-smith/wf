@@ -263,76 +263,56 @@ export function NamesGlyph(props: ChartGlyphProps) {
 }
 
 /**
- * The tidal depth: a drying height, underlined as a chart sets one, over the
- * stipple of sand the tide covers and uncovers.
+ * The tidal depth: the water's height over the bottom, measured from the
+ * surface to a shelving bed.
  */
 export function TidalDepthGlyph(props: ChartGlyphProps) {
-  const sand = [
-    [4, 16],
-    [8, 15.5],
-    [12, 16.5],
-    [16, 15.5],
-    [20, 16],
-    [6, 19],
-    [10, 18.5],
-    [14, 19.5],
-    [18, 18.5],
-    [4, 21.5],
-    [8, 21.5],
-    [12, 21],
-    [16, 21.5],
-    [20, 21],
-  ];
   return (
     <Glyph {...props}>
-      <text className="g-fig g-fig-lg" x="9" y="11">
-        2
-      </text>
-      <path d="M8.5 12.6H15" />
-      {sand.map(([x, y]) => (
-        <circle
-          key={`${x} ${y}`}
-          cx={x}
-          cy={y}
-          r="0.75"
-          fill="currentColor"
-          stroke="none"
-        />
-      ))}
+      <path d="M2.5 6.5C4.5 4.8 6.5 4.8 8.5 6.5S12.5 8.2 14.5 6.5 19 4.8 21.5 6.5" />
+      <path d="M2.5 21L21.5 15.5V21Z" {...tint(0.3)} />
+      <path d="M2.5 21L21.5 15.5" />
+      <path d="M10 9.5V16.6M7.8 11.7L10 9.5L12.2 11.7M7.8 14.6L10 16.8L12.2 14.6" />
     </Glyph>
   );
 }
 
-/** A photograph inset on the chart: its double frame, the coast within. */
+/** A satellite: its body between two panels, slantwise, as it is known. */
+function SatelliteMark() {
+  return (
+    <g transform="rotate(-45 12 9.5)">
+      <rect x="9.6" y="6.6" width="4.8" height="5.8" rx="0.8" />
+      <path d="M3.2 7.4H7.8V11.6H3.2ZM16.2 7.4H20.8V11.6H16.2ZM7.8 9.5H9.6M14.4 9.5H16.2" />
+    </g>
+  );
+}
+
+/** The satellite image under the chart. */
 export function SatelliteGlyph(props: ChartGlyphProps) {
   return (
     <Glyph {...props}>
-      <rect x="2.5" y="4" width="19" height="16" />
-      <rect x="4.5" y="6" width="15" height="12" strokeWidth={0.9} />
-      <path
-        d="M4.5 13C7 12 8 9 11 9.5S14 13 16.5 12.5 19.5 10 19.5 10V18H4.5Z"
-        {...tint(0.3)}
-      />
+      <SatelliteMark />
+      <path d="M4 20.5C6.5 18.8 8.5 18.8 11 20.5" />
     </Glyph>
   );
 }
 
-/** High water: the tide curve's crest, dotted solid. */
+/** The satellite's picture at high water: the sea right up the shore. */
 export function HighTideGlyph(props: ChartGlyphProps) {
   return (
     <Glyph {...props}>
-      <path d="M2 17C6 17 8 8 12 8S18 17 22 17" />
-      <circle cx="12" cy="8" r="2.6" fill="currentColor" />
+      <SatelliteMark />
+      <path d="M3 20.5C5 19 7 19 9 20.5S13 22 15 20.5 19 19 21 20.5" />
     </Glyph>
   );
 }
 
-/** Low water: the curve's trough, dotted open. */
+/** The satellite's picture at low water: the sand bared, in dots. */
 export function LowTideGlyph(props: ChartGlyphProps) {
   return (
     <Glyph {...props}>
-      <path d="M2 7C6 7 8 16 12 16S18 7 22 7" />
-      <circle cx="12" cy="16" r="2.6" />
+      <SatelliteMark />
+      <path d="M3.5 20.5H20.5" strokeDasharray="0 3.4" strokeWidth={2} />
     </Glyph>
   );
 }
@@ -396,18 +376,17 @@ export function SurveyGlyph(props: ChartGlyphProps) {
 
 /* ---- round the chosen spot ---- */
 
-/** The loupe: a compass rose, north marked, the light at its heart. */
+/** The loupe: a glass held over the spot, a compass needle in it. */
 export function LoupeGlyph(props: ChartGlyphProps) {
   return (
     <Glyph {...props}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 3V5.5M21 12H18.5M12 21V18.5M3 12H5.5" strokeWidth={1.1} />
+      <circle cx="10.5" cy="10.5" r="7.5" />
+      <path d="M16 16L21.5 21.5" strokeWidth={2} />
       <path
-        d="M12 4.5L13.6 12L12 10.6L10.4 12Z"
+        d="M12.8 8.2L11.6 11.6L8.2 12.8L9.4 9.4Z"
         fill="currentColor"
         strokeWidth={1}
       />
-      <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none" />
     </Glyph>
   );
 }

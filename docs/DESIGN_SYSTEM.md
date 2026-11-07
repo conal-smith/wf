@@ -83,7 +83,7 @@ checkbox, chip, count, dialog, empty, field, figure, link, notice, pager,
 search-field, segmented, select, skeleton, star-glyphs, tag, text-area,
 text-input and wordmark, and for the map's own hour-cell, shore-compass,
 spot-light, tide-label and wind-figure. The kit's newer parts are not in the
-bundle yet: `Card`, `Heading`, `Rows`, `Switch`, `Slider`, `NumberField`,
+bundle yet: `Card`, `Disclosure`, `Heading`, `Rows`, `Switch`, `Slider`, `NumberField`,
 `Tabs`, `TopBar`, `SpotSearch`, `ThemeButton` and `RatingTip`. Until they are,
 the kit's own files and the `/ui` gallery are their reference.
 

@@ -166,7 +166,7 @@ test("an offshore hour: the drift out to sea in red, and no way out or home", as
   await expect(r.locator(".map-rose-fan.is-out")).toHaveCount(0);
   await expect(r.locator(".map-rose-fan.is-home")).toHaveCount(0);
   await expect(r.locator(".map-rose-fan.is-reach")).toHaveCount(2);
-  // The needle sits in the red.
+  // The needle stands in the red, pointing out to sea.
   await expect(r.locator(".map-dial-needle")).toHaveCount(1);
 });
 

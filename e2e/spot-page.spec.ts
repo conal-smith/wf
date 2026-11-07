@@ -129,6 +129,23 @@ test("hovering the graph reads out that hour; a day card moves to its day", asyn
   await expect(second).toHaveAttribute("aria-pressed", "true");
 });
 
+test("a day card takes the whole page to that day, and today back to now", async ({
+  page,
+}) => {
+  await withTides(page);
+  await page.goto("/spot/brandon");
+  await expect(heading(page)).toBeVisible({ timeout: 30000 });
+  await expect(page.locator("[data-readout]")).toContainText("Now");
+  const now = (await page.locator("[data-now]").textContent()) ?? "";
+  await page.locator("[data-day-card]").nth(2).click();
+  // Midday on that day: the cards over the graph, and its readout, read it.
+  await expect(page.locator("[data-readout]")).toContainText("12:00");
+  await expect(page.locator("[data-now]")).not.toHaveText(now);
+  await page.locator("[data-day-card]").nth(0).click();
+  await expect(page.locator("[data-readout]")).toContainText("Now");
+  await expect(page.locator("[data-now]")).toHaveText(now);
+});
+
 test("a wheel or a trackpad over the graph reads out the hour that comes under the pointer", async ({
   page,
 }) => {
@@ -180,7 +197,7 @@ const readoutLayout = (page: Page) =>
       cells: [...readout.children].map(at),
       pill: at(readout.querySelector("span")),
       graph: at(document.querySelector("[data-spot-graph]")),
-      key: at(document.querySelector("[data-legend]")),
+      key: at(document.querySelector('[data-disclosure="wind-key"]')),
     };
   });
 
@@ -236,6 +253,15 @@ for (const width of [1440, 390])
     const svg = page.locator("[data-graph-svg]");
     const readout = page.locator("[data-readout]");
     const legend = page.locator("[data-legend]");
+    // A phone keeps the key behind its heading until it is asked for.
+    const openKey = async () => {
+      if (width < 600)
+        await page.locator('[data-disclosure="wind-key"] summary').click();
+    };
+    await expect(page.locator("[data-graph-svg]")).toBeVisible({
+      timeout: 30000,
+    });
+    await openKey();
     await expect(svg).toBeVisible();
     // Round the clock by default: the night shaded, and now, at 22:00 on the
     // Sunday, read out as dark.
@@ -255,9 +281,11 @@ for (const width of [1440, 390])
     await page.goto("/spot/brandon");
     await expect(heading(page)).toBeVisible({ timeout: 30000 });
     await expect(svg).toBeVisible();
+    await openKey();
     // No night: nothing shaded, no key for it, and the days joined by their
     // lines alone.
     await expect(svg.locator("[data-night]")).toHaveCount(0);
+    await expect(legend).toContainText("Wind");
     await expect(legend).not.toContainText("Dark");
     await expect(svg.locator("[data-day-line]").first()).toBeAttached();
     // Now is after dark: the readout is Monday's first light instead.
@@ -412,7 +440,7 @@ test("a star keeps the place where the map keeps it, and opening it counts", asy
   await expect(star).toHaveAttribute("aria-pressed", "false", {
     timeout: 30000,
   });
-  await expect(star).toHaveAccessibleName("Star Brandon Bay");
+  await expect(star).toHaveAccessibleName("Save Brandon Bay");
   await star.click();
   await expect(star).toHaveAttribute("aria-pressed", "true");
   const stored = await page.evaluate(() =>
@@ -666,20 +694,22 @@ test("under the week graph: the wind blend, the gusts, the waves, the current an
   await expect(
     graph.locator('[data-band="wind-blend"] path[data-blend]'),
   ).toHaveCount(1);
-  const fill = await graph.locator('[data-band="wind-blend"]').evaluate((band) => {
-    const ys = [...band.querySelectorAll("line")].map((line) =>
-      Number(line.getAttribute("y1")),
-    );
-    const boxes = [...band.querySelectorAll("path[data-model]")].map((path) =>
-      (path as SVGGraphicsElement).getBBox(),
-    );
-    return {
-      top: Math.min(...ys),
-      bottom: Math.max(...ys),
-      high: Math.min(...boxes.map((box) => box.y)),
-      low: Math.max(...boxes.map((box) => box.y + box.height)),
-    };
-  });
+  const fill = await graph
+    .locator('[data-band="wind-blend"]')
+    .evaluate((band) => {
+      const ys = [...band.querySelectorAll("line")].map((line) =>
+        Number(line.getAttribute("y1")),
+      );
+      const boxes = [...band.querySelectorAll("path[data-model]")].map((path) =>
+        (path as SVGGraphicsElement).getBBox(),
+      );
+      return {
+        top: Math.min(...ys),
+        bottom: Math.max(...ys),
+        high: Math.min(...boxes.map((box) => box.y)),
+        low: Math.max(...boxes.map((box) => box.y + box.height)),
+      };
+    });
   expect(fill.high).toBeGreaterThanOrEqual(fill.top - 2);
   expect(fill.low).toBeLessThanOrEqual(fill.bottom + 2);
   expect(fill.low - fill.high).toBeGreaterThan((fill.bottom - fill.top) / 3);
@@ -753,7 +783,7 @@ test("under the week graph: the wind blend, the gusts, the waves, the current an
   const box = (await page.locator("[data-spot-graph]").boundingBox())!;
   await page.mouse.move(box.x + box.width * 0.6, box.y + 80);
   await expect(readout.locator("[data-readout-gust]")).toContainText(
-    /^Gusts\d\.\d×$/,
+    /^Gust factor\d\.\d×$/,
   );
   expect(errors).toEqual([]);
 });
@@ -780,7 +810,7 @@ test("Table adds the gust factor, the wave period and the rain", async ({
   await page.locator("[data-day-card]").nth(1).click();
   await page.getByRole("button", { name: "Table", exact: true }).click();
   const table = page.locator("[data-hour-table]");
-  await expect(table.locator("thead")).toContainText("Gusts");
+  await expect(table.locator("thead")).toContainText("Gust factor");
   await expect(table.locator("thead")).toContainText("Period");
   await expect(table.locator("thead")).toContainText("Rain mm/h");
   await expect(table.locator("[data-gust-cell]").first()).toHaveText(
@@ -887,6 +917,9 @@ test("below the spot: the wind and the waves through the year, with their figure
   page.on("pageerror", (error) => errors.push(error.message));
   await withTides(page);
   await page.goto("/spot/brandon");
+  // Kept for whoever asks: nothing of it is read until it is opened.
+  await expect(page.locator("[data-climate]")).toHaveCount(0);
+  await page.locator('[data-disclosure="year"] summary').click();
   const year = page.locator("[data-climate]");
   await expect(year).toBeAttached({ timeout: 30000 });
   await year.scrollIntoViewIfNeeded();
@@ -958,6 +991,7 @@ test("sheltered water says the open sea's waves do not reach it, rather than sho
 }) => {
   await withTides(page);
   await page.goto("/spot/malahide-estuary");
+  await page.locator('[data-disclosure="year"] summary').click();
   const year = page.locator("[data-climate]");
   await expect(year).toBeAttached({ timeout: 30000 });
   await expect(
@@ -977,6 +1011,7 @@ test("a point on the open water has no year of its own", async ({ page }) => {
     page.getByRole("heading", { level: 1, name: "52.30° N, 10.10° W" }),
   ).toBeVisible({ timeout: 30000 });
   await expect(page.locator("[data-climate]")).toHaveCount(0);
+  await expect(page.locator('[data-disclosure="year"]')).toHaveCount(0);
 });
 
 /** The figures in a wind, in order: "3 g5 kn W" is ["3", "5"]. */
@@ -1174,9 +1209,7 @@ test.describe("on a phone, the week graph", () => {
     const graph = page.locator("[data-spot-graph]");
     const readout = page.locator("[data-readout]");
     await expect(page.locator("[data-graph-svg]")).toBeVisible();
-    const names = page.locator(
-      '[data-week-section="wind"] [data-band-name]',
-    );
+    const names = page.locator('[data-week-section="wind"] [data-band-name]');
     await expect(names).toHaveText([
       "Stars",
       "Wind",

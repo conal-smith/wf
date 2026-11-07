@@ -263,7 +263,7 @@ describe("rideRose", () => {
     ]);
   });
 
-  it("keeps only the wind in the dark, below the floor, or where nothing heads out", () => {
+  it("keeps only the wind in the dark or below the floor", () => {
     const bare = (r: ReturnType<typeof rideRose>) =>
       r !== null &&
       r.nogo === null &&
@@ -276,11 +276,17 @@ describe("rideRose", () => {
     expect(
       bare(rideRose(rider(), hour(225, { windKn: 6, gustKn: 7 }), DOLLY)),
     ).toBe(true);
-    // No way upwind in an onshore wind: the light's wedge is empty too.
+    // No way upwind in an onshore wind: the light's wedge is empty, and the
+    // rose says so, two plain reaches, the no-go and the drift home.
     expect(rideWedge(rider(), 18, 20, DOLLY, DOLLY)).toBeNull();
-    expect(
-      bare(rideRose(rider(), hour(DOLLY, { windKn: 18, gustKn: 20 }), DOLLY)),
-    ).toBe(true);
+    const onshore = rideRose(
+      rider(),
+      hour(DOLLY, { windKn: 18, gustKn: 20 }),
+      DOLLY,
+    )!;
+    expect(onshore.reaches.map((r) => r.kind)).toEqual(["reach", "reach"]);
+    expect(onshore.nogo).not.toBeNull();
+    expect(onshore.driftOut).toBe(false);
     // The wind is still there to show.
     expect(
       rideRose(rider(), hour(225, { daylight: false }), DOLLY)!.windFrom,
@@ -301,17 +307,18 @@ describe("rideRose", () => {
 });
 
 describe("offshoreSpans", () => {
-  it("hatches what shoreAngle calls offshore and cross-offshore", () => {
+  it("hatches where the winds shoreAngle calls offshore and cross-offshore carry a rider", () => {
     const { offshore, crossOff } = offshoreSpans(DOLLY);
-    expect(offshore).toEqual({ from: 275, to: 335 });
+    expect(offshore).toEqual({ from: 95, to: 155 });
     expect(crossOff).toEqual([
-      { from: 235, to: 275 },
-      { from: 335, to: 375 },
+      { from: 55, to: 95 },
+      { from: 155, to: 195 },
     ]);
+    // A wind carries a rider to the bearing opposite the one it blows from.
     for (let b = offshore.from + 1; b < offshore.to; b++)
-      expect(shoreAngle(b, DOLLY)).toBe("offshore");
+      expect(shoreAngle((b + 180) % 360, DOLLY)).toBe("offshore");
     for (const s of crossOff)
       for (let b = s.from + 1; b < s.to; b++)
-        expect(shoreAngle(b % 360, DOLLY)).toBe("cross-off");
+        expect(shoreAngle((b + 180) % 360, DOLLY)).toBe("cross-off");
   });
 });

@@ -3,13 +3,13 @@
   "writtenAt": "2026-10-05",
   "areas": {
     "src": {
-      "button": 10,
+      "button": 8,
       "input": 1,
       "select": 0,
       "textarea": 0
     },
     "force5/src": {
-      "button": 1,
+      "button": 0,
       "input": 0,
       "select": 0,
       "textarea": 0

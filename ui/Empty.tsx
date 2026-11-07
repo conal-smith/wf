@@ -3,9 +3,10 @@ import type { ReactNode } from "react";
 import { tv } from "./tv";
 
 /*
- * Nothing found, not found, could not load: centred where the list would be,
- * with no frame round it. A round grey icon, an Inter title, a line or two,
- * and at most two buttons.
+ * Nothing found, not found, could not load: centred where the list or the
+ * page would be, under the usual top bar, with no frame round it. A round grey
+ * icon, an Inter title, a line or two, and at most two buttons. A part of a
+ * page that failed is a `Notice` instead, and the rest of the page stays.
  */
 export const emptyStyles = tv({
   slots: {
@@ -27,6 +28,8 @@ export interface EmptyProps {
   children?: ReactNode;
   /** At most two buttons: the way on. */
   actions?: ReactNode;
+  /** Something failed just now: read out at once, as a `Notice`'s alert is. */
+  alert?: boolean;
 }
 
 /** Where a list would be, when there is nothing to list. */
@@ -37,10 +40,14 @@ export function Empty({
   className,
   children,
   actions,
+  alert = false,
 }: EmptyProps) {
   const styles = emptyStyles();
   return (
-    <div className={styles.base({ className })}>
+    <div
+      className={styles.base({ className })}
+      role={alert ? "alert" : undefined}
+    >
       <span className={styles.icon()} aria-hidden="true">
         {icon ?? <Search size={24} strokeWidth={1.75} />}
       </span>

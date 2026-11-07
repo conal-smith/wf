@@ -26,7 +26,11 @@
  * rider is at (open, pointed at, on the keys) stays a button and is moved.
  *
  * The names beside the lights are laid out once the camera rests: see
- * `placeLabels`.
+ * `placeLabels`. So is who keeps a full mark: from the national zoom the
+ * chart has no room for every ring and arrow, so a spot with no stars at the
+ * hour is a small dot (src/map.css `.z-lo`), a rated one a ring with no arrow,
+ * and a mark that would stand on a better one steps down to a dot of its own
+ * colour. Beside the list, a pill does the same. Every spot stays on the chart.
  *
  * On the Spot finder's plain map (the map's box has `is-plain`), each light
  * is a pill instead of a ring: an arrow blowing downwind, the wind, and the
@@ -43,7 +47,7 @@
  * and fifty presses of Tab (#222).
  */
 import type * as maplibregl from "maplibre-gl";
-import { nearestLight, nextLight, type Way } from "./lightHit";
+import { nearestLight, nextLight, thinLights, type Way } from "./lightHit";
 import { drawLights, lookOf, type Drawn, type Look } from "./lightsCanvas";
 import type { Wedge } from "./rideWedge";
 import { speedShort, type Units } from "./units";
@@ -109,7 +113,13 @@ const MANAGED = [
   "active",
   "named",
   "w-over",
+  "lt-thin",
 ];
+
+/** What a full mark takes on the chart from the national zoom, a little clear. */
+const FAR_REACH = 12;
+/** A pill's margin beside the list, so two never touch. */
+const PILL_MARGIN = 3;
 
 /** How long a frame of a move may spend making the lights' pictures. */
 const BUDGET_MS = 4;
@@ -204,6 +214,8 @@ export function createLights(
    */
   let laid = "";
   let dirty = true;
+  const laidOut = ({ classList: c }: HTMLElement) =>
+    `${c.contains("lab-hide")}${c.contains("lab-left")}${c.contains("lt-thin")}`;
   const placeLabels = () => {
     const camera = `${map.getZoom().toFixed(3)}|${map.getCenter().toArray().join(",")}`;
     if (!dirty && camera === laid) return;
@@ -223,11 +235,35 @@ export function createLights(
     const before = new Map<Entry, string>();
     for (const entry of entries.values()) {
       const { el } = entry;
-      before.set(
-        entry,
-        `${el.classList.contains("lab-hide")}${el.classList.contains("lab-left")}`,
-      );
-      el.classList.remove("lab-hide", "lab-left");
+      before.set(entry, laidOut(el));
+      el.classList.remove("lab-hide", "lab-left", "lt-thin");
+    }
+    // A crowded coast first: what a better mark stands on steps down to a dot
+    // (./lightHit `thinLights`), and a dot has no name to lay out. On the
+    // chart from the national zoom only the rated have a full mark to lose;
+    // beside the list every spot is a pill.
+    const box = map.getContainer().classList;
+    const pills = box.contains("is-plain");
+    if (pills || box.contains("z-lo")) {
+      const crowd = [...entries]
+        .filter(
+          ([, { el }]) =>
+            pills || el.matches(".s1, .s2, .s3, .s4, .s5, .sel, .lit"),
+        )
+        .map(([id, { el, x, y }]) => {
+          const r = pills ? el.getBoundingClientRect() : null;
+          const lit = el.matches(".sel, .lit");
+          return {
+            id,
+            x,
+            y,
+            halfW: r ? r.width / 2 + PILL_MARGIN : FAR_REACH,
+            halfH: r ? r.height / 2 + PILL_MARGIN : FAR_REACH,
+            rank: labelRank(el) + (lit ? 200 : 0),
+          };
+        });
+      for (const id of thinLights(crowd))
+        entries.get(id)?.el.classList.add("lt-thin");
     }
     for (const { el } of entries.values()) {
       const r = el.getBoundingClientRect();
@@ -287,14 +323,8 @@ export function createLights(
       } else if (rank >= 100) placed.push(lab);
       else el.classList.add("lab-hide");
     }
-    for (const [entry, was] of before) {
-      const { el } = entry;
-      if (
-        `${el.classList.contains("lab-hide")}${el.classList.contains("lab-left")}` !==
-        was
-      )
-        entry.rev++;
-    }
+    for (const [entry, was] of before)
+      if (laidOut(entry.el) !== was) entry.rev++;
   };
   let queued = 0;
   const queue = () => {

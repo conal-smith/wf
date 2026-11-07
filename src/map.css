@@ -387,14 +387,47 @@
   stroke-width: 4px;
   stroke-linejoin: round;
 }
+/* The chart's own background did not load: the kit's notice, floating over
+   what is left of the map. */
+.map-error {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  transform: translate(-50%, -50%);
+  z-index: 8;
+  width: min(420px, calc(100% - 32px));
+  border-radius: var(--radius-surface);
+  background: var(--color-ground);
+  box-shadow: var(--shadow-float);
+}
+:root[data-theme="dark"] .map-error {
+  box-shadow:
+    var(--shadow-float),
+    0 0 0 1px var(--color-line);
+}
+.map-error > div {
+  background: var(--color-ground);
+}
+/* The forecast did not load: the state under the usual top bar. */
+.forecast-failed {
+  position: absolute;
+  inset: 64px 0 0;
+  overflow-y: auto;
+  background: var(--color-ground);
+}
+@media (max-width: 719px) {
+  .forecast-failed {
+    inset: 56px 0 0;
+  }
+}
+
 @keyframes chart-fade {
   from {
     opacity: 0;
   }
 }
 
-.map-loading,
-.map-error {
+.map-loading {
   position: absolute;
   left: 50%;
   top: 40%;
@@ -410,18 +443,12 @@
   gap: 12px;
   align-items: center;
 }
-:root[data-theme="dark"] .map-loading,
-:root[data-theme="dark"] .map-error {
+:root[data-theme="dark"] .map-loading {
   box-shadow:
     var(--shadow-float),
     0 0 0 1px var(--color-line);
 }
-.map-error {
-  color: var(--color-warn);
-}
-.map-error button,
-.frame-status button,
-.primary-button {
+.frame-status button {
   border: 0;
   border-radius: var(--radius-control);
   background: var(--color-sunken);
@@ -431,9 +458,7 @@
   cursor: pointer;
 }
 @media (hover: hover) and (pointer: fine) {
-  .map-error button:hover,
-  .frame-status button:hover,
-  .primary-button:hover {
+  .frame-status button:hover {
     background: color-mix(in srgb, var(--color-ink) 10%, var(--color-sunken));
   }
 }
@@ -757,11 +782,81 @@
 .map-canvas.no-names .lt:not(.sel) .lt-lab {
   display: none;
 }
+/* From the national zoom a coast has no room for a ring and an arrow at every
+   spot: the arrow goes (the wind's lines say the direction), a rated spot is
+   a ring large enough to read its figure, and everything else steps down. */
 .map-canvas.z-lo .lt svg {
-  transform: scale(0.74);
+  transform: scale(1.12);
+}
+.map-canvas.z-lo:not(.is-plain) .lt:not(.sel, .lit) .lt-wind {
+  display: none;
 }
 .map-canvas.z-lo .lt .lt-lab {
-  left: 14px;
+  left: 16px;
+}
+/* A dot: no stars at this hour, or a mark that would stand on a better one
+   (force5/src/lights.ts). It keeps its colour, red where it is offshore. On
+   the keys it is the full mark again; under a mouse it grows and says its
+   name. */
+.map-canvas.z-lo:not(.is-plain)
+  .lt:is(.s0, .pending, .dark, .off):not(.sel, .lit, :focus-visible)
+  svg,
+.map-canvas .lt.lt-thin:not(.sel, .lit, :focus-visible) svg {
+  transform: scale(0.42);
+}
+.map-canvas.z-lo:not(.is-plain)
+  .lt:is(.s0, .pending, .dark, .off):not(.sel, .lit, :focus-visible)
+  :is(.lt-n, .lt-strike, .lt-wind),
+.map-canvas
+  .lt.lt-thin:not(.sel, .lit, :focus-visible)
+  :is(.lt-n, .lt-strike, .lt-wind) {
+  display: none;
+}
+.map-canvas.z-lo:not(.is-plain)
+  .lt:is(.s0, .pending, .dark):not(.sel, .lit, :focus-visible)
+  .lt-ring,
+.map-canvas .lt.lt-thin.s0:not(.sel, .lit, :focus-visible) .lt-ring {
+  fill: color-mix(in srgb, var(--color-ink) 58%, var(--color-ground));
+  stroke: none;
+}
+.map-canvas.z-lo:not(.is-plain)
+  .lt.off:not(.sel, .lit, :focus-visible)
+  .lt-ring,
+.map-canvas .lt.lt-thin.off:not(.sel, .lit, :focus-visible) .lt-ring {
+  fill: var(--color-pen);
+  stroke: none;
+}
+.map-canvas .lt.lt-thin:not(.sel, .lit) .lt-lab {
+  display: none;
+}
+/* A dot stands under the marks beside it, never on one. */
+.map-canvas .lt.lt-thin:not(.sel, .lit),
+.map-canvas.z-lo:not(.is-plain)
+  .lt:is(.s0, .pending, .dark, .off):not(.sel, .lit) {
+  z-index: 2;
+}
+/* Beside the list a thinned spot is the same dot in place of its pill. */
+.map-canvas.is-plain .lt.lt-thin:not(.sel, .lit, :focus-visible) {
+  width: 20px;
+  height: 20px;
+}
+.map-canvas.is-plain .lt.lt-thin:not(.sel, .lit, :focus-visible) > svg {
+  display: block;
+}
+.map-canvas.is-plain .lt.lt-thin:not(.sel, .lit, :focus-visible) .lt-pill {
+  display: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .map-canvas.z-lo:not(.is-plain) .lt:hover .lt-lab,
+  .map-canvas .lt.lt-thin:hover .lt-lab {
+    display: block;
+  }
+  .map-canvas.z-lo:not(.is-plain)
+    .lt:is(.s0, .pending, .dark, .off):not(.sel, .lit, :focus-visible):hover
+    svg,
+  .map-canvas .lt.lt-thin:not(.sel, .lit, :focus-visible):hover svg {
+    transform: scale(0.72);
+  }
 }
 .lt:focus-visible svg {
   transform: scale(1.18);
@@ -799,7 +894,7 @@
   transform: scale(1.3);
 }
 .map-canvas.is-focus.z-lo .lt.sel svg {
-  transform: none;
+  transform: scale(1.3);
 }
 /* A name the label pass (force5/src/lights.ts) found no room for. */
 .map-canvas .lt.lab-hide:not(.sel) .lt-lab {
@@ -813,7 +908,7 @@
 }
 .map-canvas.z-lo .lt.lab-left .lt-lab {
   left: auto;
-  right: 14px;
+  right: 16px;
 }
 /* Focus: the other lights' names step back. The lights themselves stay at
    full strength: a rider choosing between neighbours has to see them. */
@@ -1039,6 +1134,9 @@
 .map-canvas.is-plain:not(.z-lo) .lt:not(.lab-hide) .lt-lab {
   display: block;
 }
+.map-canvas.is-plain:not(.z-lo) .lt.lt-thin:not(.sel, .lit) .lt-lab {
+  display: none;
+}
 .map-canvas.is-plain .lt.lab-left .lt-lab,
 .map-canvas.is-plain.z-lo .lt.lab-left .lt-lab {
   left: auto;
@@ -1084,6 +1182,17 @@
   transition:
     transform 0.2s,
     opacity 0.2s;
+}
+/* Beside the list the riding places lead: a station steps back to the ground,
+   with its gold kept as an edge, and the map's foot says what the edge means. */
+.map-canvas.is-plain .obs {
+  height: 19px;
+  border-color: var(--color-line);
+  border-left: 3px solid var(--color-buoy);
+  background: var(--color-ground);
+  color: var(--color-ink-2);
+  font-weight: 500;
+  box-shadow: none;
 }
 /* A finger's reach, beyond the pill. */
 .obs::before {
@@ -1378,8 +1487,8 @@
 }
 .ks-ticks {
   position: relative;
-  height: 14px;
-  font: 500 9px var(--font-mono);
+  height: 15px;
+  font: 500 var(--text-caption) / 1 var(--font-mono);
   color: var(--color-ink);
 }
 .ks-ticks span {
@@ -1390,9 +1499,16 @@
 .ks-ticks i {
   position: absolute;
   right: 0;
-  top: 1px;
-  font: 500 10px var(--font-body);
+  top: 2px;
+  font: 500 var(--text-caption) / 1 var(--font-body);
   color: var(--color-ink-muted);
+}
+.depth-scale {
+  margin: 6px 0 2px;
+}
+.ds-bar {
+  height: 8px;
+  border: 1px solid var(--color-line);
 }
 
 /* The rain scale, in the key and the layers: a swatch an amount, on the
@@ -1423,12 +1539,12 @@
   display: block;
   padding-top: 2px;
   text-align: center;
-  font: 500 9px var(--font-mono);
+  font: 500 var(--text-caption) / 1.2 var(--font-mono);
   color: var(--color-ink);
   background: var(--color-card);
 }
 .rain-scale i {
-  font: 500 10px var(--font-body);
+  font: 500 var(--text-caption) var(--font-body);
   font-style: normal;
   color: var(--color-ink-muted);
 }
@@ -1482,8 +1598,7 @@
 @media (pointer: coarse) {
   /* A finger's target round the small glyph, without moving it. */
   .info-i::after,
-  .help-q::after,
-  .star-toggle::after {
+  .help-q::after {
     content: "";
     position: absolute;
     inset: -13px;
@@ -1505,34 +1620,6 @@
 .ip-small {
   font-size: 13px;
   color: var(--color-ink-muted);
-}
-
-/* The red star a rider keeps a spot with. */
-.star-toggle {
-  position: relative;
-  display: inline-grid;
-  place-items: center;
-  flex: none;
-  padding: 2px;
-  border: 0;
-  background: none;
-  cursor: pointer;
-}
-.star-toggle svg path {
-  fill: none;
-  stroke: var(--color-pen);
-}
-@media (hover: hover) and (pointer: fine) {
-  .star-toggle:hover svg path {
-    fill: color-mix(in srgb, var(--color-pen) 18%, transparent);
-  }
-}
-.star-toggle[aria-pressed="true"] svg path {
-  fill: var(--color-pen);
-}
-.star-toggle:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 1px;
 }
 
 /* ---------- the glyphs ---------- */
@@ -1563,6 +1650,31 @@
 }
 .frame-status.is-error {
   color: var(--color-warn);
+}
+/* What the chart's colours mean, above the small print at the chart's left
+   (src/MapScales.tsx): the rail and Gust stand at the right. */
+.map-scales {
+  position: absolute;
+  left: 16px;
+  bottom: calc(100% + 42px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(208px, calc(100vw - 128px));
+  pointer-events: none;
+}
+.map-scale {
+  padding: 6px 8px 4px;
+  border-radius: var(--radius-control);
+  background: var(--color-ground);
+}
+.map-scale-name {
+  display: block;
+  font: 500 var(--text-caption) / 1.2 var(--font-body);
+  color: var(--color-ink-muted);
+}
+.map-scale figure {
+  margin: 3px 0 0;
 }
 /* Inside .map-footer, standing on the scrub bar's top edge. Not placed from
    a measured height: that lands a frame or more after the bar changes height,
@@ -1791,30 +1903,28 @@
 }
 /* The map's two modes at its foot, as the mock-up has them: the plain map
    with the spots, and the chart, which opens the full chart with its layers. */
-.panel-modes {
-  position: absolute;
-  left: 50%;
-  bottom: 16px;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 6px;
-  padding: 5px;
-  border-radius: 999px;
-  background: var(--color-ground);
-  box-shadow: var(--shadow-float);
-}
-.panel-modes .panel-chart {
-  gap: 7px;
-  border-color: transparent;
-}
-.panel-when {
+.panel-foot {
   position: absolute;
   left: 12px;
   bottom: 12px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
   padding: 4px 10px;
   border-radius: 999px;
   background: var(--color-ground);
   box-shadow: var(--shadow-float);
   font: 500 12px/1.4 var(--font-body);
   pointer-events: none;
+}
+.panel-key {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  color: var(--color-ink-muted);
+}
+.panel-key i {
+  width: 3px;
+  height: 12px;
+  background: var(--color-buoy);
 }

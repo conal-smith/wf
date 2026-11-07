@@ -11,7 +11,6 @@
   display: grid;
 }
 .map-info {
-  position: relative;
   grid-template-columns: 230px minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr);
   width: 940px;
@@ -612,6 +611,15 @@
   margin: 6px 0 0;
   font-size: 13px;
   color: var(--color-ink-muted);
+}
+
+.mi-dot {
+  display: block;
+  width: 7px;
+  height: 7px;
+  margin: 0 auto;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-ink) 58%, var(--color-ground));
 }
 
 /* ---- a phone: the whole screen, the rail a row of tabs ---- */

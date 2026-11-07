@@ -22,7 +22,8 @@
 .tour-prompt {
   position: fixed;
   z-index: var(--z-index-header);
-  bottom: 28px;
+  /* Over the map, clear of the time bar it is about to explain. */
+  bottom: 196px;
   left: 50%;
   width: min(380px, calc(100% - 24px));
   padding: 16px 18px;

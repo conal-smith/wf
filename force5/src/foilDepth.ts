@@ -37,12 +37,42 @@ export const FOIL_INDEX_PATH = "foildepth/index.json";
  * bay's shallows are some tens of pixels across. Further out they are a
  * pixel or two along the coast that no one can read, and the whole of
  * Ireland in view was every region's archive at once (41 of them), read and
- * drawn again at each step of a zoom (scripts/perf, `ireland`).
+ * drawn again at each step of a zoom (scripts/perf, `ireland`). Out there the
+ * layer is a faint glow along the coast, with no data (chartStyle.ts).
  */
 export const FOIL_MIN_ZOOM = 9;
 
-/** The words in Layers and the key while the layer is on and the chart is out past it. */
-export const FOIL_ZOOM_NOTE = "Zoom in to see.";
+/**
+ * The zoom it is at full strength by, up from nothing at FOIL_MIN_ZOOM, as the
+ * glow fades away over the same zooms (GLOW_GONE in chartStyle.ts), so neither
+ * pops and no band is drawn twice over.
+ */
+export const FOIL_FULL_ZOOM = 9.7;
+
+/**
+ * The faint blue on the shallows where the layer's tiles are not read: one
+ * small picture made once from the regions' overviews
+ * (scripts/foildepth/coast_glow.py), under BASE_URL. No tide and no figures:
+ * it says where the shallows lie, for what it costs to show one image.
+ */
+export const COAST_GLOW_PATH = "foildepth/coast-glow.webp";
+export const COAST_GLOW_CORNERS: [
+  [number, number],
+  [number, number],
+  [number, number],
+  [number, number],
+] = [
+  [-11.25, 55.77657],
+  [-4.21875, 55.77657],
+  [-4.21875, 50.73646],
+  [-11.25, 50.73646],
+];
+/** Its strength on the map, full until this zoom and gone by FOIL_FULL_ZOOM. */
+export const COAST_GLOW_OPACITY = 0.9;
+export const COAST_GLOW_FADE_FROM = 8.9;
+
+/** Beside the layer's name, while the chart is out past FOIL_MIN_ZOOM: not a fault. */
+export const FOIL_ZOOM_NOTE = "Zoom in for this hour's depths.";
 
 /**
  * How far above the floor the deep colour fades in, in metres: the edge of

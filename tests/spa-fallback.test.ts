@@ -59,9 +59,12 @@ describe("the SPA fallback", () => {
     for (const [, to] of rules) expect(to).toBe("/");
   });
 
-  // Without a 404.html, Pages answers every unknown path with index.html.
-  it("ships a 404 page, so Pages keeps its single-page fallback off", () => {
-    expect(readFileSync(join(ROOT, "public/404.html"), "utf8")).toContain("<title>");
+  // Without a 404.html, Pages answers every unknown path with index.html. The
+  // build writes it from the app, so the missing page has the usual top bar.
+  it("builds a 404 page, so Pages keeps its single-page fallback off", () => {
+    const config = readFileSync(join(ROOT, "vite.config.ts"), "utf8");
+    expect(config).toMatch(/missingPage\(\),/);
+    expect(config).toMatch(/"404\.html"/);
   });
 
   it("has no blanket rule", () => {

@@ -20,7 +20,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { loupeRose, roseScale } from "../../force5/src/focus";
+import { Heart } from "lucide-react";
+import { faintRose, loupeRose, roseScale } from "../../force5/src/focus";
+import { Loupe } from "../../shared/web/Loupe";
 import { speedShort, unitLabel } from "../../force5/src/units";
 import {
   measuredAt,
@@ -47,7 +49,6 @@ import {
 import type { PlaceHour } from "../ratings";
 import { clock, type StripColumn } from "../strip";
 import { HOUR, type Best, type DayRow } from "./finder";
-import { Rose } from "./Rose";
 import type { Readings } from "./useReadings";
 
 export const cardStyles = tv({
@@ -68,7 +69,7 @@ export const cardStyles = tv({
     body: "flex min-w-0 flex-col gap-2",
     head: "flex items-center gap-2",
     names: "flex min-w-0 flex-1 flex-col",
-    name: "m-0 min-w-0 truncate font-body text-prose font-semibold text-ink",
+    name: "m-0 line-clamp-2 min-w-0 font-body text-prose leading-tight font-semibold text-ink",
     nameLink:
       "rounded-control text-ink no-underline not-disabled:hover:text-chart-magenta",
     meta: "truncate font-body text-body text-ink-muted",
@@ -85,7 +86,11 @@ export const cardStyles = tv({
     windBar: "h-4.5",
     barNum:
       "pointer-events-none absolute top-1/2 -translate-x-1/2 -translate-y-1/2 font-body text-caption font-semibold text-photo-shade",
-    tick: "pointer-events-none absolute -top-0.5 -bottom-0.5 w-0.5 -translate-x-1/2 rounded-full bg-pen",
+    // A notch over the bar, clear of the figures in it: ink for the hour now,
+    // magenta for the day's best on a day ahead.
+    tick: "pointer-events-none absolute -top-1 h-1 w-0.5 -translate-x-1/2 rounded-t-full",
+    tickNow: "bg-ink",
+    tickBest: "bg-chart-magenta",
     hours: "relative h-3.5 font-body text-caption text-ink-muted",
     hour: "absolute -translate-x-1/2",
     // A card while the places are read: the shapes of its parts, each the
@@ -178,6 +183,7 @@ export function SpotPicture({
     hour && hour.windKn !== null
       ? loupeRose(rider, hour, spot.facing ?? null, units)
       : null;
+  const faint = hour ? faintRose(rider, hour, spot.facing ?? null) : null;
   return (
     <div
       className={s.picture({ className })}
@@ -197,12 +203,20 @@ export function SpotPicture({
           onError={() => setFailed(true)}
         />
       )}
-      {size && (
-        <Rose
+      {size && r > 0 && (
+        // In units of a hundredth of the rim, as the loupe's small one is drawn.
+        <Loupe
+          width={(size.width * 100) / r}
+          height={(size.height * 100) / r}
+          cx={((place ? place.x : size.width / 2) * 100) / r}
+          cy={((place ? place.y : size.height / 2) * 100) / r}
+          r={100}
           loupe={loupe}
-          r={r}
-          x={place ? place.x : size.width / 2}
-          y={place ? place.y : size.height / 2}
+          faint={faint}
+          facing={spot.facing ?? null}
+          scale={null}
+          card
+          className="pointer-events-none"
         />
       )}
       {children}
@@ -210,8 +224,8 @@ export function SpotPicture({
   );
 }
 
-/** The red star a rider keeps a place with. */
-export function StarToggle({
+/** The heart a rider saves a place with, as the market saves a listing. */
+export function SaveToggle({
   spot,
   on,
   onToggle,
@@ -229,21 +243,19 @@ export function StarToggle({
       icon
       pressed={on ? "worded" : false}
       className={className}
-      aria-label={`Star ${spot.name}`}
-      title={on ? "Starred" : "Star"}
+      aria-label={`Save ${spot.name}`}
+      title={on ? "Saved" : "Save"}
       onClick={(event) => {
         event.stopPropagation();
         onToggle();
       }}
     >
-      <svg width={16} height={16} viewBox="0 0 16 16" aria-hidden="true">
-        <path
-          className={on ? "fill-pen stroke-pen" : "fill-none stroke-pen"}
-          d="M8 1.3 L10 6.1 L15.1 6.5 L11.2 9.8 L12.5 14.8 L8 12.1 L3.6 14.9 L4.8 9.9 L0.9 6.6 L6 6.1 Z"
-          strokeWidth={1.4}
-          strokeLinejoin="round"
-        />
-      </svg>
+      <Heart
+        size={16}
+        strokeWidth={1.5}
+        fill={on ? "currentColor" : "none"}
+        aria-hidden="true"
+      />
     </Button>
   );
 }
@@ -371,7 +383,7 @@ export function SpotCard(props: SpotCardProps) {
               </span>
             )}
           </div>
-          <StarToggle
+          <SaveToggle
             spot={spot}
             on={starred}
             onToggle={onToggleStar}
@@ -383,6 +395,7 @@ export function SpotCard(props: SpotCardProps) {
             day={day}
             row={row}
             shown={shown}
+            isToday={isToday}
             units={units}
             onPick={onPick}
           />
@@ -404,7 +417,7 @@ const STARS_CSS = [
 /**
  * The day's hours, first light to last, as two gradients: the wind in its
  * own colours with its speed every three hours, and the stars in theirs. A
- * red tick marks the hour shown, where it is on the row: none for an hour
+ * notch marks the hour shown, where it is on the row: none for an hour
  * off either end (today after dark, or before first light), never the last
  * hour standing in for it. A press on either bar picks the hour under it, of
  * this day's, on every card.
@@ -413,12 +426,14 @@ function DayBars({
   day,
   row,
   shown,
+  isToday,
   units,
   onPick,
 }: {
   day: DayRow;
   row: readonly PlaceHour[] | undefined;
   shown: number;
+  isToday: boolean;
   units: Units;
   onPick: (time: number) => void;
 }) {
@@ -455,7 +470,11 @@ function DayBars({
   };
   const tick =
     shownAt < 0 ? null : (
-      <i className={s.tick()} style={{ left: pos(shownAt) }} data-shown-tick />
+      <i
+        className={s.tick({ className: isToday ? s.tickNow() : s.tickBest() })}
+        style={{ left: pos(shownAt) }}
+        data-shown-tick
+      />
     );
   return (
     <div

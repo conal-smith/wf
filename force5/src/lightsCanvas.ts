@@ -308,7 +308,8 @@ export function lookOf(
   const ringCs = getComputedStyle(ringEl);
   const strikeCs = getComputedStyle(strikeEl);
   const figureCs = getComputedStyle(figureEl);
-  const figure = figureEl.textContent ?? "";
+  const figure =
+    figureCs.display === "none" ? "" : (figureEl.textContent ?? "");
   const strike = strikeCs.display !== "none";
   const ringKey = [
     scale,

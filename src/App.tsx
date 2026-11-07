@@ -16,8 +16,9 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Maximize2, Waves, X } from "lucide-react";
+import { CloudOff, Maximize2, X } from "lucide-react";
 import { Button } from "../ui/Button";
+import { Empty } from "../ui/Empty";
 import { SpotSearch } from "../ui/SpotSearch";
 import { StarGlyphs } from "../ui/StarGlyphs";
 import { TopBar } from "../ui/TopBar";
@@ -36,6 +37,7 @@ import {
   areaAt,
   areasAt,
   areasInView,
+  FOIL_FULL_ZOOM,
   FOIL_MIN_ZOOM,
   FOIL_ZOOM_NOTE,
   foilColours,
@@ -59,7 +61,7 @@ import { parseWindLayers, type WindLayers } from "../force5/src/windLayer";
 import { isFocusStyle, loupeRose, type FocusStyle } from "../force5/src/focus";
 import ScrubBar from "./ScrubBar";
 import MapControls from "./MapControls";
-import { LAYER_DEFAULTS } from "./layerGroups";
+import { LAYER_DEFAULTS, excludeWashFoil } from "./layerGroups";
 import { tourOffered, tourSeen } from "./tourOffer";
 import { SiteMenu } from "../force5/src/SiteMenu";
 import {
@@ -78,6 +80,7 @@ import {
 import { MAP_ASK_EVENT } from "./PagesOverMap";
 import { saveChartCentre } from "./lastView";
 import { InfoPop } from "./InfoPop";
+import MapScales from "./MapScales";
 import useRunRefresh, {
   loadNewerRun,
   RunRecovery,
@@ -261,8 +264,6 @@ const NO_NAMES: ReadonlySet<string> = new Set();
 const SPLIT = "(min-width: 1100px)";
 /** The wind beside the list: no colour and no particles (the map is plain there). */
 const PLAIN_WIND = { wash: false, particles: false } as const;
-/** No foilable depth beside the list, the same empty list every render. */
-const NO_FOIL: FoilView[] = [];
 /** How long the chart takes to open out from beside the list, or back. */
 const OPEN_MS = 420;
 
@@ -433,7 +434,7 @@ export default function App() {
    * moment of "no spot".
    */
   const [opened, setOpened] = useState(false);
-  const [error, setError] = useState("");
+  const [failed, setFailed] = useState(false);
   const [frameError, setFrameError] = useState("");
   const [retry, setRetry] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(
@@ -485,12 +486,18 @@ export default function App() {
         // (src/layerGroups.tsx): names a rider once hid come back.
         names: true,
         satellite: parseSatelliteOption(saved.satellite),
+        // The two exclude each other since 2026-11-06 (src/layerGroups.tsx). A
+        // rider who kept both had asked for the coloured wind: the tidal depth
+        // was on by default.
+        foil:
+          (saved.foil ?? DEFAULT_LAYERS.foil) &&
+          !parseWindLayers(store.get(WIND_KEY), store.get(OLD_WIND_KEY)).wash,
       };
     } catch {
       return DEFAULT_LAYERS;
     }
   });
-  const chooseWind = (next: WindLayers) => {
+  const saveWind = (next: WindLayers) => {
     setWind(next);
     store.set(WIND_KEY, JSON.stringify(next));
   };
@@ -503,9 +510,22 @@ export default function App() {
     setFocusStyle(style);
     store.set(FOCUS_KEY, style);
   };
-  const chooseLayers = (next: MapLayers) => {
+  const saveLayers = (next: MapLayers) => {
     setLayers(next);
     store.set(LAYERS_KEY, JSON.stringify(next));
+  };
+  // Coloured wind and the tidal depth exclude each other: turning either on
+  // turns the other off.
+  const chooseWind = (next: WindLayers) => {
+    const settled = excludeWashFoil(wind, layers, next, layers);
+    saveWind(settled.wind);
+    if (settled.layers.foil !== layers.foil)
+      saveLayers({ ...layers, foil: settled.layers.foil });
+  };
+  const chooseLayers = (next: MapLayers) => {
+    const settled = excludeWashFoil(wind, layers, wind, next);
+    saveLayers({ ...next, foil: settled.layers.foil });
+    if (settled.wind.wash !== wind.wash) saveWind(settled.wind);
   };
   const controls = useRef<Controls | null>(null);
   const [mapReady, setMapReady] = useState(false);
@@ -586,13 +606,7 @@ export default function App() {
           if (first === "harmonie" || controller.signal.aborted) throw e;
           return loadManifest("harmonie", controller.signal);
         }
-      })().catch((e) => {
-        throw e instanceof ManifestUnavailableError
-          ? new Error(
-              "The forecast snapshot is missing. Run npm run weather:refresh:harmonie, then reload.",
-            )
-          : e;
-      }),
+      })(),
       // Started by the page's head on a map URL (force5/src/boot.ts).
       (
         takeEarly(spotsUrl) ??
@@ -634,10 +648,16 @@ export default function App() {
         if (linked) setFocusId(linked.id);
       })
       .catch((e) => {
-        if (!controller.signal.aborted)
-          setError(
-            e instanceof Error ? e.message : "Unable to open forecast data.",
-          );
+        if (controller.signal.aborted) return;
+        // What went wrong is for whoever runs the site, in the console. A
+        // rider is told what they can do about it (the state below).
+        console.error(e);
+        if (
+          import.meta.env.MODE === "development" &&
+          e instanceof ManifestUnavailableError
+        )
+          console.info("Fetch a run: npm run weather:refresh:harmonie");
+        setFailed(true);
       });
     return () => controller.abort();
   }, []);
@@ -665,7 +685,7 @@ export default function App() {
     );
     observer.observe(dock.current);
     return () => observer.disconnect();
-  }, [error, !!manifest]);
+  }, [failed, !!manifest]);
 
   /* ---- the published blend, and the models only when they are wanted ---- */
   const spotBlend = useSpotBlend(!!pendingModel);
@@ -1247,7 +1267,8 @@ export default function App() {
     const c = controls.current?.map?.getCenter();
     if (areas && c) setFoilNearId(nearestArea(areas, c.lng, c.lat)?.id ?? null);
   }, [foilState.manifest]);
-  const foilTime = column?.time ?? null;
+  // At the hour on show: the chart's, or beside the list the cards'.
+  const foilTime = (page === "chart" ? column : lightColumn)?.time ?? null;
   // Each area's water level at the hour (the station's tide, or behind a
   // weir the basin's own), and the station's tide it came from.
   const foilTides = useMemo(() => {
@@ -1754,7 +1775,9 @@ export default function App() {
   /**
    * The chart beside the list is fitted to the places on it as it first
    * shows them, and again when the list changes between Favourites and Near
-   * you, or the rider's place comes in: never on a hover.
+   * you, or the rider's place comes in: never on a hover. Near you, with the
+   * rider's place, it opens round them instead, at the zoom their own coast's
+   * tidal depth is at full strength; the spots further out are a pan away.
    */
   const fitKey = `${finderScope}|${riderAt ? "rider" : ""}`;
   const fitted = useRef<string | null>(null);
@@ -1762,11 +1785,20 @@ export default function App() {
     const map = controls.current?.map;
     const bounds = spotsBounds(listedSpots);
     if (!map || !bounds) return;
-    map.fitBounds(bounds, {
-      padding: fitPadding,
-      maxZoom: 11,
-      duration: reducedMotion ? 0 : duration,
-    });
+    const round = finderScope === "near" ? riderAt : null;
+    map.fitBounds(
+      round
+        ? [
+            [round.lon, round.lat],
+            [round.lon, round.lat],
+          ]
+        : bounds,
+      {
+        padding: fitPadding,
+        maxZoom: round ? FOIL_FULL_ZOOM : 11,
+        duration: reducedMotion ? 0 : duration,
+      },
+    );
   };
   useEffect(() => {
     if (!mapReady || page !== "finder" || !split || !listedSpots.length) return;
@@ -1970,6 +2002,26 @@ export default function App() {
       windObs && dockSpot ? pairStation(dockSpot, windObs.stations) : null,
     [windObs, dockSpot?.lat, dockSpot?.lon],
   );
+
+  /**
+   * With no spot chosen, the scrub bar's lane: how many of the places rated
+   * have stars at each hour. A warning that takes the stars takes them here.
+   */
+  const ratedSpots = useMemo(() => {
+    if (!barShown || dockSpot || !hours.size) return null;
+    const columns = strip.map(() => ({ spots: 0, best: 0 }));
+    for (const row of hours.values())
+      row.forEach((hour, at) => {
+        const column = columns[at];
+        if (!column || hour?.warning?.replacesRating) return;
+        if (hour?.water?.replacesRating) return;
+        const stars = hour?.rating?.stars ?? 0;
+        if (stars < 1) return;
+        column.spots++;
+        column.best = Math.max(column.best, stars);
+      });
+    return { columns, of: hours.size };
+  }, [barShown, !!dockSpot, version, strip]);
 
   const pointHours: PlaceHour[] | undefined = picked
     ? pickedHours
@@ -2332,7 +2384,6 @@ export default function App() {
     () => ({
       ...layers,
       depths: false,
-      foil: false,
       currents: false,
       rain: false,
       // The stations' and buoys' own wind, beside the spots' forecast.
@@ -2366,7 +2417,7 @@ export default function App() {
         } as React.CSSProperties
       }
     >
-      {!error && (
+      {!failed && (
         <Button
           variant="outline"
           size="sm"
@@ -2378,14 +2429,33 @@ export default function App() {
           {skip.label}
         </Button>
       )}
-      {error ? (
-        <main className="fatal-error chart-box">
-          <h1>The forecast isn’t ready yet.</h1>
-          <p role="alert">{error}</p>
-          <button className="primary-button" onClick={() => location.reload()}>
-            Try again
-          </button>
-        </main>
+      {failed ? (
+        <>
+          {topBar}
+          <main className="forecast-failed">
+            <Empty
+              as="h1"
+              alert
+              title="The forecast could not be loaded"
+              icon={<CloudOff size={24} strokeWidth={1.75} />}
+              actions={
+                <>
+                  <Button variant="primary" onClick={() => location.reload()}>
+                    Try again
+                  </Button>
+                  <Button variant="quiet" href="/spot">
+                    All places
+                  </Button>
+                </>
+              }
+            >
+              <p className="m-0">
+                Check your connection. If it is fine, the latest forecast is
+                late reaching us, so try again in a few minutes.
+              </p>
+            </Empty>
+          </main>
+        </>
       ) : (
         <>
           {topBar}
@@ -2483,30 +2553,14 @@ export default function App() {
                     </Button>
                   </div>
                   {panelWhen && (
-                    <span className="panel-when" data-panel-when>
-                      {panelWhen}
-                    </span>
+                    <div className="panel-foot">
+                      <span data-panel-when>{panelWhen}</span>
+                      <span className="panel-key">
+                        <i aria-hidden="true" />
+                        Measured wind
+                      </span>
+                    </div>
                   )}
-                  <div
-                    className="panel-modes"
-                    role="group"
-                    aria-label="The map"
-                    data-panel-modes
-                  >
-                    <Button variant="outline" size="sm" pressed>
-                      Spots
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="panel-chart"
-                      onClick={openChart}
-                      data-panel-chart
-                    >
-                      <Waves size={15} strokeWidth={1.75} aria-hidden="true" />
-                      Chart
-                    </Button>
-                  </div>
                 </div>
               )}
               {onChart && (
@@ -2572,12 +2626,11 @@ export default function App() {
                     readings={readings}
                     covered={() => !!document.querySelector(OVER_THE_CHART)}
                     onPick={tapChart}
-                    // Beside the list the map is plain, every layer off but the
-                    // names: the chart's layers are the full chart's (the Spot
-                    // finder mock-up, 2026-10-31).
+                    // Beside the list the map is plain: no wind, and of the
+                    // chart's layers only the tidal depth and the names.
                     wind={onChart ? wind : PLAIN_WIND}
                     layers={onChart ? layers : plainLayers}
-                    foil={onChart ? foilViews : NO_FOIL}
+                    foil={foilViews}
                     currents={onChart ? currents.features : null}
                     rain={onChart ? rain.view : null}
                     satellite={onChart ? satellite.image : null}
@@ -2656,6 +2709,11 @@ export default function App() {
                 >
                   {/* The small print rides over the scrub bar's top edge, in its
                   own layout: never a frame behind it (map.css). */}
+                  <MapScales
+                    wind={wind.wash}
+                    depth={layers.foil && !foilFar}
+                    rain={layers.rain && !!rain.view}
+                  />
                   <div className="map-print">
                     <InfoPop label="Sources and small print" wide>
                       {sources}
@@ -2717,6 +2775,7 @@ export default function App() {
                       units={prefs.units}
                       nightHours={prefs.nightHours}
                       measured={dockPaired}
+                      rated={ratedSpots}
                       href={
                         !column
                           ? null
@@ -2794,7 +2853,7 @@ export default function App() {
           )}
         </Suspense>
       )}
-      {!error && gustDue && FEATURES.gust && page === "chart" && (
+      {!failed && gustDue && FEATURES.gust && page === "chart" && (
         <Suspense fallback={null}>
           <Companion
             context={{

@@ -559,16 +559,18 @@ test("a missing frame keeps the map on its last good frame and offers a retry", 
   await expect(slider).toHaveValue(String(target));
 });
 
-test("a missing snapshot is actionable, and an expired one is labelled", async ({
+test("a missing snapshot says what a rider can do, and an expired one is labelled", async ({
   page,
 }) => {
   await page.route("**/weather/harmonie.json", (route) =>
     route.fulfill({ status: 404, body: "Missing" }),
   );
   await page.goto("/?map");
-  await expect(page.getByRole("alert")).toContainText(
-    "npm run weather:refresh",
-  );
+  const failure = page.getByRole("alert");
+  await expect(failure).toContainText("The forecast could not be loaded");
+  await expect(failure).not.toContainText("npm");
+  await expect(failure.getByRole("button", { name: "Try again" })).toBeVisible();
+  await expect(page.getByRole("banner")).toBeVisible();
   await page.unroute("**/weather/harmonie.json");
   await page.goto("/?map");
   await expect(page.locator(".map-model")).toHaveText(harmonie.modelName);
@@ -611,7 +613,9 @@ test("an unavailable basemap says so, and the scrub bar still reads the forecast
   // A spot in the link: the scrub bar reads it with no basemap drawn.
   await page.goto("/?spot=brandon");
   await expect(page.locator(".map-error")).toBeVisible({ timeout: 30000 });
-  await expect(page.getByRole("button", { name: "Reload map" })).toBeVisible();
+  await expect(
+    page.locator(".map-error").getByRole("button", { name: "Try again" }),
+  ).toBeVisible();
   await expect(barName(page)).toHaveText("Brandon Bay");
   await barReady(page);
   await expect(

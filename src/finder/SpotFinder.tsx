@@ -20,8 +20,9 @@
  * address (`/?tab=favourites`, finder.ts `TAB_PARAM`) once one is chosen, so
  * either can be linked to, kept and reloaded.
  * Near you never asks the browser where the rider is unasked: without
- * their place it says why it is wanted, with a "Use my location" button,
- * over the spots nearest where the chart was, which give no distances.
+ * their place it is the spots nearest where the chart was, which give no
+ * distances, and nothing over the cards says so. "Use my location" is in the
+ * filter sheet.
  *
  * The home page (since 26 October 2026). On a wide screen the chart stands
  * beside the list, drawn by src/App.tsx over the room the list leaves it
@@ -125,17 +126,12 @@ const styles = tv({
     group: "m-0 grid gap-2 border-0 p-0",
     groupName: "m-0 p-0 font-body text-body font-medium text-ink-muted",
     filterRow: "flex flex-wrap items-center gap-2",
-    // Near you without the rider's place: why it is wanted, and the one
-    // way to give it, in a soft card.
-    ask: "mb-2 grid gap-2.5 rounded-surface bg-sunken on-card px-4 py-3.5 text-prose leading-normal text-ink-2",
-    askAction: "justify-self-start",
-    // One card a row: a narrow list, as the mock-up has it.
+    // One card a row beside the chart; alone on a wide window, two, so a
+    // card's hours never stretch across the screen.
     cards: "m-0 grid list-none grid-cols-1 items-start gap-2 p-0",
+    cardsAlone: "rail:grid-cols-2",
     empty:
       "rounded-surface bg-sunken on-card px-4 py-3.5 text-prose leading-normal text-ink-2",
-    // Above the cards: where "near you" is measured from, when that is not
-    // the rider.
-    note: "m-0 px-0.5 pb-3 text-body leading-normal text-ink-muted",
   },
 });
 
@@ -233,8 +229,8 @@ export default function SpotFinder(props: FinderProps) {
   // Whether the address is to name the tab: one was chosen, or named.
   const [named, setNamed] = useState(() => kept !== null);
   // The browser is asked where the rider is only when they press "Use my
-  // location", under the line that says why; a place kept from an earlier
-  // yes is read again quietly on Near you.
+  // location" in the filter sheet; a place kept from an earlier yes is read
+  // again quietly on Near you.
   const [asked, setAsked] = useState(false);
   const place = useRiderPlace(
     asked || (onScreen && scope === "near" && knownBefore()),
@@ -409,6 +405,9 @@ export default function SpotFinder(props: FinderProps) {
   const counted = !waiting && !placesDue;
   // "today", "tomorrow", "on Thursday": the day shown, in a sentence.
   const onTheDay = onDay(noon, now);
+  const canAsk =
+    scope === "near" && !known && !waiting && !place.refused && place.locates;
+  const grid = s.cards({ class: beside ? undefined : s.cardsAlone() });
 
   return (
     <div
@@ -522,42 +521,27 @@ export default function SpotFinder(props: FinderProps) {
                   onChange={onModel}
                 />
               </div>
+              {canAsk && (
+                <div className={s.group()}>
+                  <p className={s.groupName()}>Location</p>
+                  <div className={s.filterRow()}>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setAsked(true);
+                        setFiltering(false);
+                      }}
+                    >
+                      <MapPin size={16} strokeWidth={1.75} aria-hidden="true" />
+                      Use my location
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </Dialog>
-          {scope === "near" &&
-            !known &&
-            !waiting &&
-            !place.refused &&
-            place.locates && (
-              <div className={s.ask()} data-finder-ask>
-                <p className="m-0">
-                  Nearby lists the spots within 30 km of where you are. To find
-                  them, your browser will ask to share your location.
-                </p>
-                <Button
-                  size="sm"
-                  className={s.askAction()}
-                  onClick={() => setAsked(true)}
-                >
-                  <MapPin size={16} strokeWidth={1.75} aria-hidden="true" />
-                  Use my location
-                </Button>
-              </div>
-            )}
-          {scope === "near" &&
-            !known &&
-            !waiting &&
-            // Over the cards' shapes as well, so it does not push them
-            // down when they land.
-            (ranked.length > 0 || placesDue) && (
-              <p className={s.note()} data-finder-note>
-                {place.source === "chart"
-                  ? "We don’t know where you are, so these are the spots nearest the part of the chart you last looked at."
-                  : "We don’t know where you are, so these are the spots nearest the middle of Ireland."}
-              </p>
-            )}
           {placesDue ? (
-            <div className={s.cards()} data-finder-loading>
+            <div className={grid} data-finder-loading>
               {Array.from(
                 {
                   length: Math.min(
@@ -575,7 +559,7 @@ export default function SpotFinder(props: FinderProps) {
             </div>
           ) : ranked.length ? (
             <HoverContext.Provider value={hover}>
-              <ul className={s.cards()} data-finder-cards data-day={day}>
+              <ul className={grid} data-finder-cards data-day={day}>
                 {ranked.map((item) => {
                   return (
                     <li
@@ -634,7 +618,7 @@ export default function SpotFinder(props: FinderProps) {
                 )
               ) : scope === "favourites" ? (
                 <>
-                  Star a spot and it shows here. Find one by name with the
+                  Save a spot and it shows here. Find one by name with the
                   search at the top, see the{" "}
                   <Link
                     href={scopeAddress(window.location.href, "near")}

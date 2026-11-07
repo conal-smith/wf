@@ -334,6 +334,7 @@ test.describe("on a wide screen", () => {
       .getByRole("group", { name: "Which spots" })
       .getByRole("button", { name: "Nearby" })
       .click();
+    await page.locator("[data-finder-filter]").click();
     await page.getByRole("button", { name: "Use my location" }).click();
     await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1, {
       timeout: 30000,
@@ -358,6 +359,7 @@ test.describe("a first visit, with no favourites", () => {
     await context.setGeolocation(DUBLIN);
     await page.goto("/");
     await expect(finder(page)).toHaveAttribute("data-scope", "near");
+    await page.locator("[data-finder-filter]").click();
     await page.getByRole("button", { name: "Use my location" }).click();
     await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1, {
       timeout: 30000,
@@ -366,8 +368,20 @@ test.describe("a first visit, with no favourites", () => {
     expect(listed).toBeGreaterThan(3);
     await expect(lights(page)).toHaveCount(listed, { timeout: 30000 });
     await expect(page.getByRole("img", { name: "You are here" })).toBeVisible();
-    // Fitted to the list: every light inside the box beside it.
-    await expect.poll(() => lightsInside(page)).toBe(listed);
+    // Opened round the rider, closer in than the list: their mark in the
+    // middle of the box beside it, and the spots further out a pan away.
+    const box = (await panel(page).boundingBox())!;
+    await expect
+      .poll(async () => {
+        const you = await page
+          .getByRole("img", { name: "You are here" })
+          .boundingBox();
+        return you
+          ? Math.abs(you.x + you.width / 2 - (box.x + box.width / 2))
+          : Infinity;
+      })
+      .toBeLessThan(box.width / 3);
+    await expect.poll(() => lightsInside(page)).toBeLessThan(listed);
   });
 
   test("location refused: Nearby lists the spots nearest the middle of Ireland, and the chart beside it is fitted to them", async ({
@@ -376,7 +390,6 @@ test.describe("a first visit, with no favourites", () => {
     await page.goto("/");
     await expect(finder(page)).toHaveAttribute("data-scope", "near");
     await expect(cards(page)).toHaveCount(12, { timeout: 30000 });
-    await expect(page.locator("[data-finder-note]")).toBeVisible();
     await expect(lights(page)).toHaveCount(12, { timeout: 30000 });
     await expect(page.getByRole("img", { name: "You are here" })).toHaveCount(
       0,

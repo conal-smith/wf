@@ -7,6 +7,7 @@ import {
   isFocusStyle,
   loupeRose,
   metresPerPixel,
+  LOUPE_BAND,
   polar,
   rangeRing,
   roseDrawing,
@@ -206,18 +207,21 @@ describe("the ride rose's geometry", () => {
     expect(roseDrawing(rose, ROSE_MIN_PX - 1, null).slow).toBeNull();
   });
 
-  it("hatches the offshore winds on the bezel, and none without a beach", () => {
+  it("hatches where an offshore wind carries a rider on the bezel, and none without a beach", () => {
     const dial = dialDrawing(225, DOLLYMOUNT, 150);
     expect(dial.offshore).not.toBeNull();
     expect(dial.crossOff).toHaveLength(2);
     // The offshore words on the upper half run clockwise; on the lower, back.
-    expect(dial.offshore!.text).toContain(" 0 0 1 ");
-    expect(dialDrawing(225, 0, 150).offshore!.text).toContain(" 0 0 0 ");
+    expect(dial.offshore!.text).toContain(" 0 0 0 ");
+    expect(dialDrawing(225, 0, 150).offshore!.text).toContain(" 0 0 1 ");
     const bare = dialDrawing(225, null, 150);
     expect(bare.offshore).toBeNull();
     expect(bare.crossOff).toHaveLength(0);
-    // The needle's tip 30 px inside the rim, on the wind's bearing.
-    expect(bare.needle.startsWith("M-84.9 84.9")).toBe(true);
+    // The needle's tip outside the rim, on the side the wind blows to.
+    const [x, y] = polar(45, 150 + LOUPE_BAND + 5);
+    expect(bare.needle.startsWith(`M${x.toFixed(1)} ${y.toFixed(1)}`)).toBe(
+      true,
+    );
   });
 
   it("keeps the foot box on the bezel, or pinned inside the clear map", () => {

@@ -38,10 +38,11 @@ function below(el: Element): Box {
 /**
  * The layers' rail: on a desktop, beside the zoom (src/MapControls.tsx), a
  * column of small round buttons, one a layer, with no panel behind them, so
- * the chart stays in view while the layers change. Off is faint and flat; on
- * is a paper disc ruled in ink. A layer's name shows to its left under the
- * pointer and on the keys' focus. The groups and their rules are the Layers
- * panel's own (src/layerGroups.tsx), each set apart by a short rule.
+ * the chart stays in view while the layers change. Off is plain; on is filled
+ * in ink. A layer's name shows to its left under the pointer and on the keys'
+ * focus. The groups are the layers' own (src/layerGroups.tsx), each set apart
+ * by space. A layer's colour scale stands at the foot of the chart while it
+ * draws (src/MapScales.tsx), not here.
  *
  * It is the one way to the layers, on a phone as on a desktop: there is no
  * panel behind it. Where it would run into the dock it scrolls, in the room
@@ -159,7 +160,7 @@ export default function LayerRail({
               icon
               className="lr-ic"
               aria-label={item.name}
-              aria-description={item.note ?? undefined}
+              aria-description={item.note ?? item.hint ?? undefined}
               pressed={item.on ? "worded" : false}
               tabIndex={item.id === stop ? 0 : -1}
               data-rail-layer={item.id}
@@ -177,9 +178,9 @@ export default function LayerRail({
               <span className="lr-tip" aria-hidden="true">
                 {item.name}
                 <small> · {item.on ? "on" : "off"}</small>
-                {item.note && (
+                {(item.note ?? item.hint) && (
                   <span className="lr-note" data-layer-note={item.id}>
-                    {item.note}
+                    {item.note ?? item.hint}
                   </span>
                 )}
               </span>

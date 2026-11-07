@@ -7,6 +7,8 @@ import type {
 } from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { beaufortPath } from "../../ui/beaufortPath";
+import { Button } from "../../ui/Button";
+import { Notice } from "../../ui/Notice";
 import {
   BATHY_PATH,
   CHART_BOUNDS,
@@ -46,7 +48,14 @@ import {
   type LoupeRose,
   type RoseScale,
 } from "./focus";
-import { FOIL_MIN_ZOOM } from "./foilDepth";
+import {
+  COAST_GLOW_CORNERS,
+  COAST_GLOW_FADE_FROM,
+  COAST_GLOW_OPACITY,
+  COAST_GLOW_PATH,
+  FOIL_FULL_ZOOM,
+  FOIL_MIN_ZOOM,
+} from "./foilDepth";
 import { isLakeWater } from "./pointSource";
 import { setMapView } from "./tiledField";
 import {
@@ -62,6 +71,9 @@ import type { Units } from "./units";
 
 maplibregl.setWorkerUrl(workerUrl);
 maplibregl.setWorkerCount(2);
+
+/** The coast's faint glow, a source and a layer of one name. */
+const COAST_GLOW = "coast-glow";
 
 /** All of Ireland, as the map opens on it (chartStyle.ts, the app's too). */
 export { IRELAND };
@@ -874,7 +886,7 @@ export default function WindMap(props: Props) {
         !basemapLoaded &&
         (source === "omt" || url.includes(TILES_URL.replace("https://", "")))
       )
-        setError("The chart could not load. Check your connection and reload.");
+        setError("Check your connection and try again.");
     });
     map.on("load", () => {
       clearTimeout(loadTimeout);
@@ -1091,6 +1103,51 @@ export default function WindMap(props: Props) {
     map.getContainer().classList.toggle("no-names", !layers.names);
   }, [ready, layers]);
 
+  // The coast's faint glow, with the tidal depth switched on: one small image,
+  // fetched the first time it is wanted, once the map is up. It fades out over
+  // the zooms the real depth comes up in, and draws nothing past them.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    if (layers.foil && !map.getSource(COAST_GLOW)) {
+      map.addSource(COAST_GLOW, {
+        type: "image",
+        url: new URL(
+          `${import.meta.env.BASE_URL}${COAST_GLOW_PATH}`,
+          window.location.href,
+        ).href,
+        coordinates: COAST_GLOW_CORNERS,
+      });
+      map.addLayer(
+        {
+          id: COAST_GLOW,
+          type: "raster",
+          source: COAST_GLOW,
+          maxzoom: FOIL_FULL_ZOOM,
+          paint: {
+            "raster-opacity": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              COAST_GLOW_FADE_FROM,
+              COAST_GLOW_OPACITY,
+              FOIL_FULL_ZOOM,
+              0,
+            ],
+            "raster-fade-duration": 0,
+          },
+        },
+        map.getLayer("rivers") ? "rivers" : undefined,
+      );
+    }
+    if (map.getLayer(COAST_GLOW))
+      map.setLayoutProperty(
+        COAST_GLOW,
+        "visibility",
+        layers.foil ? "visible" : "none",
+      );
+  }, [ready, layers.foil]);
+
   // Foilable depth: one raster-dem source and color-relief layer per area
   // (a tide station's region, or a pilot), made the first time it comes into
   // view and kept, hidden when out of it; the tide moves only the ramp's
@@ -1127,7 +1184,16 @@ export default function WindMap(props: Props) {
             minzoom: Math.max(FOIL_MIN_ZOOM, area.minzoom - 0.5),
             paint: {
               "color-relief-color": area.color,
-              "color-relief-opacity": 1,
+              // Up from nothing, as the coast's glow fades out (chartStyle.ts).
+              "color-relief-opacity": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                FOIL_MIN_ZOOM,
+                0,
+                FOIL_FULL_ZOOM,
+                1,
+              ],
               // No fade: the ramp is not transitioned anyway, but any paint
               // change starts the style's 300 ms transition on the opacity,
               // and the whole map is drawn every frame until it ends. A new
@@ -1342,6 +1408,12 @@ export default function WindMap(props: Props) {
     const map = mapRef.current;
     if (!ready || !map) return;
     map.getContainer().classList.toggle("is-plain", plain);
+    // Beside the list only the cities are named: the spots carry the names.
+    if (map.getLayer("places"))
+      map.setFilter(
+        "places",
+        plain ? ["==", ["get", "class"], "city"] : PLACE_CLASSES,
+      );
   }, [ready, plain]);
 
   // The Live wind layer: made the first time it has readings, then written
@@ -1699,9 +1771,19 @@ export default function WindMap(props: Props) {
         </div>
       )}
       {error && (
-        <div className="map-error" role="alert">
-          <span>{error}</span>
-          <button onClick={() => location.reload()}>Reload map</button>
+        <div className="map-error">
+          <Notice
+            level="warn"
+            alert
+            title="The chart could not be loaded"
+            action={
+              <Button size="sm" onClick={() => location.reload()}>
+                Try again
+              </Button>
+            }
+          >
+            {error}
+          </Notice>
         </div>
       )}
     </>

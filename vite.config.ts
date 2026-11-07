@@ -1,11 +1,17 @@
-import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
+import {
+  createReadStream,
+  existsSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type Connect, type Plugin, type Rollup } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { OWN_BUNDLE_PATHS } from "./force5/src/siteNav";
 import {
+  MISSING_PAGE,
   MISSING_SPOT,
   isMissingSpot,
   withHead,
@@ -40,8 +46,8 @@ const marketApi = process.env.MARKET_API_PROXY ?? "http://127.0.0.1:8787";
  * /stars or /ai never downloads it. Left at that, the map's paths would fetch
  * the entry, run it, and only then ask for the map: one more round trip than
  * the single bundle it replaced, ~90 ms on a slow 4G profile. So the page's
- * head gets a few lines that, unless the path is one of OWN_BUNDLE_PATHS,
- * preload the map's chunk, the chunks it imports and its stylesheet, beside
+ * head gets a few lines that, on the root and nowhere else, preload the map's
+ * chunk, the chunks it imports and its stylesheet, beside
  * the entry. They are the same URLs, with the same `crossorigin`, that Vite's
  * own preload asks for when the import runs, so nothing is fetched twice.
  * The map's own first requests start from the entry (force5/src/boot.ts).
@@ -110,7 +116,6 @@ function preloadTheMap(): Plugin {
           for (const name of drawn)
             if (!loaded.has(name) && !wanted.has(name)) chartFiles.push(name);
         }
-        const paths = OWN_BUNDLE_PATHS.map((p) => p.toString()).join(",");
         const preload =
           `function(u){` +
           `var l=document.createElement("link");` +
@@ -122,7 +127,7 @@ function preloadTheMap(): Plugin {
             tag: "script",
             injectTo: "head",
             children:
-              `if(![${paths}].some(function(p){return p.test(location.pathname)})){` +
+              `if(location.pathname==="/"||location.pathname==="/index.html"){` +
               `${JSON.stringify(urls)}.forEach(${preload});` +
               `if(location.pathname==="/"&&/[?&](map|chart|spot)(=|&|$)/.test(location.search))` +
               `${JSON.stringify(urlsOf(chartFiles))}.forEach(${preload})}`,
@@ -256,6 +261,31 @@ function missingSpots(): Plugin {
   };
 }
 
+/**
+ * The page every unknown address gets: the app itself, which draws the site's
+ * missing page in the usual top bar, light or dark (src/main.tsx,
+ * `isMissingPath`). Written beside index.html, so a host that answers unknown
+ * paths with 404.html answers them with the right status too, and Pages keeps
+ * its single-page fallback off, which would answer each of them 200.
+ */
+function missingPage(): Plugin {
+  let outDir = "dist";
+  return {
+    name: "wingfoil:missing-page",
+    apply: "build",
+    configResolved(config) {
+      outDir = resolve(config.root, config.build.outDir);
+    },
+    closeBundle() {
+      const html = withHead(
+        readFileSync(join(outDir, "index.html"), "utf8"),
+        MISSING_PAGE,
+      ).replace("</head>", `<meta name="robots" content="noindex" /></head>`);
+      writeFileSync(join(outDir, "404.html"), html);
+    },
+  };
+}
+
 // Tailwind is configured in CSS, not here: ui/theme.css is the theme and the
 // list of directories scanned for class names. There is no tailwind.config.js.
 export default defineConfig({
@@ -265,6 +295,7 @@ export default defineConfig({
     preloadTheMap(),
     staticData(),
     missingSpots(),
+    missingPage(),
   ],
   publicDir: e2e ? ".e2e/public" : "public",
   build: {

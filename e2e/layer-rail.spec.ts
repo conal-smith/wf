@@ -339,3 +339,28 @@ test.describe("on a phone", () => {
     await expect(rail(page)).toHaveCount(0);
   });
 });
+
+test("coloured wind and the tidal depth turn each other off", async ({
+  page,
+}) => {
+  await page.goto("/?map");
+  await zoomLayers(page).click();
+  await railButton(page, "Coloured wind").click();
+  await expect(railButton(page, "Coloured wind")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(railButton(page, "Tidal depth")).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  await railButton(page, "Tidal depth").click();
+  await expect(railButton(page, "Tidal depth")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(railButton(page, "Coloured wind")).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+});

@@ -14,6 +14,7 @@ import { chipStyles } from "./Chip";
 import { controlStyles } from "./control";
 import { countStyles } from "./Count";
 import { backdropPress, dialogStyles, onBackdrop, syncModal } from "./Dialog";
+import { disclosureStyles } from "./Disclosure";
 import { emptyStyles } from "./Empty";
 import { fieldStyles } from "./Field";
 import { figureStyles } from "./Figure";
@@ -89,6 +90,7 @@ const RECIPES = {
   controlStyles,
   countStyles,
   dialogStyles,
+  disclosureStyles,
   emptyStyles,
   fieldStyles,
   figureStyles,
@@ -247,6 +249,7 @@ describe("what ui/ exports", () => {
         "ConfirmDialog",
         "Count",
         "Dialog",
+        "Disclosure",
         "Empty",
         "Field",
         "Figure",

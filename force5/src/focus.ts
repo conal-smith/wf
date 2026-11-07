@@ -2,7 +2,7 @@
 // nothing. Pure geometry, so the sizes can be tested without a map; WindMap.tsx
 // draws them.
 import { offshoreSpans, rideRose, type Rose, type Span } from "./rideWedge";
-import type { Rider } from "./stars";
+import { windBand, type Rider } from "./stars";
 import {
   beaufort,
   isForce,
@@ -412,12 +412,13 @@ export interface DialDrawing {
   pin: [number, number];
 }
 
-/** How far in from the rim the needle reaches. */
+/** How far in from the rim the needle's tail starts. */
 const NEEDLE = 30;
 
 /**
- * On the bezel at radius `r`: the wind directions that are offshore here in
- * red (none without a facing), and the needle at the wind's from-bearing.
+ * On the bezel at radius `r`: where an offshore wind would carry a rider, in
+ * red (none without a facing), and the needle out across the rim on the same
+ * side, the way the wind blows: an offshore wind's stands in the red.
  * OFFSHORE is written along an arc outside the band, the right way up: on
  * the lower half of the dial the arc runs back, and a little further out, so
  * the letters stand on it.
@@ -445,16 +446,40 @@ export function dialDrawing(
     };
     crossOff = spans.crossOff.map((s) => sectorPath(s, inner, outer));
   }
-  const [tx, ty] = polar(windFrom, r - NEEDLE);
-  const [ax, ay] = polar(windFrom - 2.6, r + LOUPE_BAND + 5);
-  const [bx, by] = polar(windFrom + 2.6, r + LOUPE_BAND + 5);
-  const [mx, my] = polar(windFrom, r + LOUPE_BAND - 1);
+  const to = windFrom + 180;
+  const tip = r + LOUPE_BAND + 5;
+  const tail = r - NEEDLE;
+  const wing = (2.6 * tip) / tail;
+  const [tx, ty] = polar(to, tip);
+  const [ax, ay] = polar(to - wing, tail);
+  const [bx, by] = polar(to + wing, tail);
+  const [mx, my] = polar(to, tail + 6);
   return {
     offshore,
     crossOff,
     needle: `M${f1(tx)} ${f1(ty)}L${f1(ax)} ${f1(ay)}L${f1(mx)} ${f1(my)}L${f1(bx)} ${f1(by)}Z`,
-    pin: polar(windFrom, r + LOUPE_BAND / 2),
+    pin: polar(to, r + LOUPE_BAND / 2),
   };
+}
+
+/**
+ * The rose a rider could hold in daylight were there wind to ride: what the
+ * satellite picture draws faintly under their floor. Null at night, with no
+ * direction, or once the hour's own rose shows it.
+ */
+export function faintRose(
+  rider: Rider,
+  hour: { windKn: number | null; from: number | null; daylight: boolean },
+  facing: number | null,
+): Rose | null {
+  const floor = windBand(rider).min;
+  if (!hour.daylight || hour.from === null) return null;
+  if (hour.windKn !== null && hour.windKn >= floor) return null;
+  return rideRose(
+    rider,
+    { windKn: floor, gustKn: null, from: hour.from, daylight: true },
+    facing,
+  );
 }
 
 /** What the loupe is given for the hour: the rose, the beach, and the reading for its foot. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nearestLight, nextLight } from "./lightHit";
+import { nearestLight, nextLight, thinLights } from "./lightHit";
 
 describe("nearestLight", () => {
   const lights = [
@@ -54,5 +54,40 @@ describe("nextLight", () => {
     expect(nextLight(lights, at("pier2"), "left")).toBe("pier");
     expect(nextLight(lights, at("pier2"), "up")).toBe("pier");
     expect(nextLight(lights, at("pier"), "down")).toBe("pier2");
+  });
+});
+
+describe("thinLights", () => {
+  const light = (id: string, x: number, rank: number) => ({
+    id,
+    x,
+    y: 0,
+    halfW: 10,
+    halfH: 10,
+    rank,
+  });
+
+  it("keeps the best of a crowd and thins the rest", () => {
+    const thin = thinLights([
+      light("near", 12, 2),
+      light("best", 0, 5),
+      light("clear", 40, 1),
+    ]);
+    expect([...thin]).toEqual(["near"]);
+  });
+
+  it("keeps the first of a tie, whatever the order of the ranks", () => {
+    expect([...thinLights([light("a", 0, 3), light("b", 5, 3)])]).toEqual([
+      "b",
+    ]);
+  });
+
+  it("compares with what was kept, not with what was thinned", () => {
+    const thin = thinLights([
+      light("a", 0, 3),
+      light("b", 15, 2),
+      light("c", 30, 1),
+    ]);
+    expect([...thin]).toEqual(["b"]);
   });
 });

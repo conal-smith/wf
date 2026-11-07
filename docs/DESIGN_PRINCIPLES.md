@@ -912,6 +912,27 @@ published, the finest model at each hour stands in. The defaults are
 unchanged: HARMONIE then ECMWF for the wind, the finest wave model at each
 hour for the waves, each blend drawn beside them.
 
+**2026-11-06 — Marks that read from far out, and a time bar with a scale.**
+From the national zoom a spot with no stars at the hour is a small dot, red
+where it is offshore; a rated spot is a ring large enough to read its figure,
+with no arrow; and a mark that would stand on a better one steps down to a dot
+in its own colour (`thinLights`, force5/src/lightHit.ts). Beside the list a pill
+steps down the same way. Every spot stays on the chart. The scrub bar stays the
+data alone, as 2026-11-02 has it, but it is opaque, its wind is a solid fill on
+a scale, and its bands are named in a column of their own. With no spot chosen
+it has one lane, how many spots have stars at each hour.
+
+**2026-11-06 — The tidal depth is a look worth seeing, and the coloured wind
+gives way to it.** The owner on the tidal depth: "the depth around the
+coastline... a really nice light coloured blue effect". It "is a gradient
+showing the tidal data at the exact hour... most likely pretty expensive, but I
+do want it on the finders map"; "I'm happy that you only see it when you zoom in
+on the whole Ireland chart... too much data"; "When you zoom out we just put
+like a little bit of a faint blue glow around, like a cheap, something much
+cheaper. And then when you zoom in, then you know it shows the more detail."
+Coloured wind stays off by default, and the two exclude each other: turning
+either on turns the other off.
+
 ---
 
 ## Still open
@@ -931,3 +952,45 @@ hour for the waves, each blend drawn beside them.
   ensemble lands.
 - **The phone app** (`mobile/`) still draws from its own hand-written radius
   and shadow tokens in the old look; porting it is its own piece of work.
+
+**2026-11-07 — The finder is the list, and the glow stays on the shallows.**
+The owner on the line over the cards: "I just want the list of nearby
+locations... simpler, more clean." So the finder has neither the day's best
+hour over its cards nor the line saying where the list is measured from, which
+replaces both in 2026-10-26 and 2026-10-27; the spots are simply listed. "Use my
+location" stays, in the filter sheet, the one way the browser is asked. On the
+glow: "It's only meant to show essentially the really shallow parts of the
+water, so it should only be a very subtle little glow around the coastline until
+you zoom in and then you see the real data." It is drawn on the shallows and
+reaches a few hundred metres past them, not out over the sea.
+
+**2026-11-07 — The spot page keeps today whole, and the finder's map opens round
+the rider.** The ruling of 2026-10-25 reaches the spot page: its graph and table
+start at Irish midnight, and it still opens on the hour now. It reads the
+models' own runs, so a morning hour can differ from the chart's, which carries
+the finest run forward in the blend. With the rider's place known, Near you's
+map opens round them at `FOIL_FULL_ZOOM`, where the tidal depth is at full
+strength, not fitted to every spot within 30 km.
+
+**2026-11-07 — Every wind visual shows where the rider goes.** The owner:
+"offshore is going to blow you out to sea, onshore is going to blow you to the
+land. So it's the direction that you would move if you were windsurfing or wing
+foiling." Every arrow points the way the wind blows, and every dial shows where
+a rider would be carried: the offshore red on a loupe's rim stands on the sea
+side, and the stars page's dial has offshore on the sea and onshore on the land,
+as Settings does, with an arrow for each wind. The needle stands on that same side,
+pointing out across the rim, so an offshore wind's needle is in the red. Compass
+words stay the wind's own, "SW" for a wind from the south-west, as every forecast
+says it.
+
+**2026-11-07 — The loupe is always on the satellite picture.** The owner: "we've
+already built this primitive... What direction you can sail in, that's what we
+need to show here." A rideable hour always draws the rose: in an onshore wind
+with no way out, two plain reaches, the no-go and the drift. Under the rider's
+floor, in daylight, the picture draws the same rose faintly.
+
+**2026-11-07 — One loupe.** The owner: "we've kind of built two primitives... we
+just have one loupe." The satellite picture and the finder's cards draw the same
+component, `Loupe` (shared/web/Loupe.tsx), a card's in small; the card's own
+drawing is gone. The chart draws the same rose and dial from the same geometry
+(force5/src/focus.ts) over the map.

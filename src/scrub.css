@@ -1,18 +1,16 @@
 /* The scrub bar (src/ScrubBar.tsx): the chart's foot, the full width of the
    map, inset a little from its edges. Two rows: the moment's readings, then
-   the strip along the whole width. Glass over the map, as the chart's other
-   boxes are, one soft shadow and a faint edge. Its width, not the window's,
-   decides how the readings sit (a container query), so it lays out the same
-   wherever the map is. */
+   the strip along the whole width. A floating box, opaque as the chart's
+   other boxes are, one soft shadow and a faint edge. Its width, not the
+   window's, decides how the readings sit (a container query), so it lays out
+   the same wherever the map is. */
 .scrub {
   position: relative;
   container: scrub / inline-size;
   margin: 0 12px calc(12px + env(safe-area-inset-bottom));
   padding: 10px 14px 6px;
   border-radius: var(--radius-surface);
-  background: color-mix(in srgb, var(--color-ground) 86%, transparent);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  background: var(--color-ground);
   box-shadow:
     var(--shadow-float),
     inset 0 0 0 1px var(--color-line);
@@ -131,11 +129,17 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.sb-hint b {
+  font-weight: 600;
+  color: var(--color-ink);
+}
 
 /* ---- the strip ---- */
 .sb-strip {
+  --sb-bands: 56px;
   position: relative;
-  margin-top: 6px;
+  margin-top: 8px;
+  margin-left: var(--sb-bands);
   padding-bottom: 18px;
   box-sizing: content-box;
   cursor: ew-resize;
@@ -153,8 +157,41 @@
   outline-offset: 4px;
   border-radius: 6px;
 }
+/* The bands' names and the wind's scale, in the column beside the hours. */
+.sb-bands {
+  position: absolute;
+  top: 0;
+  right: 100%;
+  width: var(--sb-bands);
+  height: 100%;
+  pointer-events: none;
+}
+.sb-band,
+.sb-tick {
+  position: absolute;
+  font: var(--text-caption) / 12px var(--font-body);
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+.sb-band {
+  left: 0;
+  max-width: calc(var(--sb-bands) - 4px);
+  white-space: normal;
+}
+.sb-band.is-mid {
+  transform: translateY(-50%);
+}
+.sb-tick {
+  right: 6px;
+  transform: translateY(-50%);
+  font-variant-numeric: tabular-nums;
+}
+.sb-grid {
+  stroke: var(--color-line);
+  stroke-width: 1;
+}
 .sb-hatch {
-  stroke: color-mix(in srgb, var(--color-ink) 9%, transparent);
+  stroke: color-mix(in srgb, var(--color-ink) 7%, transparent);
   stroke-width: 1.5;
 }
 .sb-night {
@@ -176,8 +213,8 @@
   stroke-linejoin: round;
 }
 .sb-line.is-wind {
-  stroke: color-mix(in srgb, var(--color-ink) 35%, transparent);
-  stroke-width: 1;
+  stroke: color-mix(in srgb, var(--color-ink) 60%, transparent);
+  stroke-width: 1.25;
 }
 .sb-line.is-waves {
   stroke: var(--color-depth);
@@ -187,8 +224,8 @@
 }
 .sb-gust {
   fill: none;
-  stroke: color-mix(in srgb, var(--color-ink) 55%, transparent);
-  stroke-width: 1.2;
+  stroke: var(--color-ink-2);
+  stroke-width: 1.25;
   stroke-dasharray: 2 3;
 }
 .sb-lane {
@@ -202,7 +239,7 @@
   opacity: 0.45;
 }
 .sb-now-line {
-  stroke: var(--color-now);
+  stroke: var(--color-ink-2);
   stroke-width: 1.5;
 }
 .sb-head line {
@@ -282,10 +319,24 @@
   .sb-readout.is-bare .sb-cell.is-time {
     grid-column: auto;
   }
+  .sb-hint {
+    white-space: normal;
+  }
+  /* With no spot the one lane says itself in the readout over it, and the
+     hours take the width. */
+  .scrub.is-bare .sb-strip {
+    --sb-bands: 0px;
+  }
+  .scrub.is-bare .sb-bands {
+    display: none;
+  }
 }
 @media (max-width: 720px) {
   .scrub {
     margin: 0 8px calc(8px + env(safe-area-inset-bottom));
     padding: 6px 10px 4px;
+  }
+  .sb-strip {
+    --sb-bands: 44px;
   }
 }

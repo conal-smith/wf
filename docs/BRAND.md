@@ -33,7 +33,7 @@ The rules behind it, and the dated rulings, are in
    rounded-surface`). A hairline (`border-line`) divides rows, and only
    inside a card.
 7. **The thing shown is marked flat.** The chosen hour is outlined inside its
-   column, the open spot's light stands a size up, the time now is a red line,
+   column, the open spot's light stands a size up, the time now is a line in ink,
    and what is off is struck through or tagged in red. Nothing is lifted,
    circled, or drawn or written by hand. A mark does not comment: no verdict
    beside it (see the information rule in DESIGN_PRINCIPLES.md).
@@ -71,7 +71,7 @@ attribute. Design and check every view in both.
 | `line-strong`, `ink-disabled` | `#8b8b94` / `#6b6b74` | A disabled icon, a switch's empty track. Strokes only. |
 | `accent`, `accent-ink` | ink, and the ground on it | The one filled button. |
 | `chart-magenta`, `focus` | `#b0186a` / `#ff5aae` | The best of something (a five-star hour, the spot in view), a quantity's bar (`wash`), the `.ie` of the wordmark, and the focus ring. |
-| `pen` / `pen-ink` | `#d43a2c` / `#ff5b4d`, words `#bf3125` / `#ff7d70` | The red accent: the line at now, offshore, an `off` tag. `pen` is the mark; words in red take `pen-ink`. |
+| `pen` / `pen-ink` | `#d43a2c` / `#ff5b4d`, words `#bf3125` / `#ff7d70` | The red accent: offshore and an `off` tag. `pen` is the mark; words in red take `pen-ink`. |
 | `warn`, `now` / `warn-ground` | `#b02a1f` / `#ff6a5e`, on `#fde8e4` / `#3a1e1b` | Degraded, an error, a field that is wrong, the present instant. |
 | `ok` | `#2a7046` / `#4cc27a` | One liveness mark. |
 | `met-yellow`, `met-orange`, `met-red` | `#f0c419`, `#e67322`, `#c3241c` | Met Éireann's warning levels: the square of a notice, nothing else. Do not re-theme. |
@@ -211,9 +211,21 @@ card), `NoticeMark` is the same square with one word beside it ("Water",
 "Orange warning"). `alert` is for something that went wrong just now; a
 warning that was there when the page came is not one.
 
-**Empty.** `Empty` stands where a list would be when there is nothing to
-list: centred, with no frame, a round grey icon, an Inter title, a line or
-two, and at most two buttons. A load error is a `Notice` with Try again.
+**Empty, missing and failed.** One state system, always inside the usual top
+bar and the rider's theme. `Empty` stands where a list or a page would be
+when there is nothing to show: centred, with no frame, a round grey icon, an
+Inter title, a line or two, and at most two buttons. A page that is not
+there, and a page that could not load (`alert`, with Try again), are `Empty`
+too; the site's missing page and the forecast's failure are not pages of
+their own. A part of a page that could not load is a `Notice` with Try again,
+and the rest of the page stays; in a narrow column its action goes under the
+words (`stacked`). Over the map it is the same notice, floating. The words
+say what a rider can do, never what a developer would run.
+
+**Disclosure.** `Disclosure` is what a page keeps for whoever asks: a heading
+with a chevron that opens what is under it, with no frame and no rule, and
+nothing under it drawn or fetched until then. `small` is a grey name in place
+of a section's heading, for a chart's key.
 
 **Dialog.** `Dialog` and `ConfirmDialog`: the ground with a sheet's corner
 and the sheet's shadow, no frame and no rule under the title; the title in

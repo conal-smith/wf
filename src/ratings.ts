@@ -568,11 +568,11 @@ export function handedPointHours(
   return hours;
 }
 
-/** "SW 18g24": an hour's wind as a list of spots gives it, in knots; "" with none. */
+/** "SW 18 g24": an hour's wind as a list of spots gives it, in knots; "" with none. */
 export function hourWind(
   hour: Pick<PlaceHour, "windKn" | "gustKn" | "from">,
 ): string {
   if (hour.windKn === null) return "";
-  const kn = `${Math.round(hour.windKn)}${hour.gustKn === null ? "" : `g${Math.round(hour.gustKn)}`}`;
+  const kn = `${Math.round(hour.windKn)}${hour.gustKn === null ? "" : ` g${Math.round(hour.gustKn)}`}`;
   return hour.from === null ? kn : `${compass(hour.from)} ${kn}`;
 }

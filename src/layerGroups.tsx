@@ -86,6 +86,8 @@ export interface LayerTile {
   info?: { label: string; at: InfoSection };
   /** What it cannot draw just now, while it is on. */
   note?: string | null;
+  /** A word on what it is drawing, under its name: not a fault, so no dot. */
+  hint?: string | null;
   /** New to the chart: marked so beside its name. */
   isNew?: boolean;
   /**
@@ -197,13 +199,17 @@ export function layerGroups({
       glyph: <ChartGlyph glyph={glyphs.waves} size={14} />,
       rule: "any",
       tiles: [
-        part(
-          "foil",
-          "Tidal depth",
-          "Water at this tide",
-          <TidalDepthGlyph size={18} />,
-          { label: "About tidal depth", at: "foil" },
-        ),
+        {
+          ...part(
+            "foil",
+            "Tidal depth",
+            "Water at this tide",
+            <TidalDepthGlyph size={18} />,
+            { label: "About tidal depth", at: "foil" },
+          ),
+          note: null,
+          hint: layers.foil ? notes.foil : null,
+        },
         {
           ...part(
             "currents",
@@ -292,6 +298,24 @@ export function layerGroups({
   ];
 }
 
+/**
+ * Coloured wind and the tidal depth exclude each other: each paints the sea,
+ * and the one reads through neither. Turning either on turns the other off.
+ * Turning one off leaves the other as it was.
+ */
+export function excludeWashFoil(
+  wind: WindLayers,
+  layers: ChartLayers,
+  nextWind: WindLayers,
+  nextLayers: ChartLayers,
+): { wind: WindLayers; layers: ChartLayers } {
+  if (nextWind.wash && !wind.wash && nextLayers.foil)
+    return { wind: nextWind, layers: { ...nextLayers, foil: false } };
+  if (nextLayers.foil && !layers.foil && nextWind.wash)
+    return { wind: { ...nextWind, wash: false }, layers: nextLayers };
+  return { wind: nextWind, layers: nextLayers };
+}
+
 /** One of the rail's buttons: a layer's glyph, its name, and its switch. */
 export interface RailItem {
   id: string;
@@ -300,6 +324,8 @@ export interface RailItem {
   on: boolean;
   /** What it cannot draw just now, said beside its name. */
   note?: string | null;
+  /** A word on what it is drawing, under its name: not a fault, so no dot. */
+  hint?: string | null;
   press: () => void;
 }
 
@@ -323,6 +349,7 @@ export function railGroups(groups: LayerGroup[]) {
           glyph: tile.glyph,
           on: tile.on,
           note: tile.note,
+          hint: tile.hint,
           press: tile.on && none ? none.press : tile.press,
         })),
     };

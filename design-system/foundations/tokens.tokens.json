@@ -191,6 +191,11 @@
           "$type": "color",
           "$value": "#e0803a",
           "$description": "The gust cap on a candle (D12). Not re-themed."
+        },
+        "gust-ink": {
+          "$type": "color",
+          "$value": "#a34d12",
+          "$description": "The gust in words and figures. 4.65:1 on a control's fill on a card."
         }
       },
       "weather": {
@@ -374,6 +379,11 @@
           "$type": "color",
           "$value": "#ff7d70",
           "$description": "Proposed night chart: the red accent in words. 6.2:1."
+        },
+        "gust-ink": {
+          "$type": "color",
+          "$value": "#e8934f",
+          "$description": "Night chart: the gust in words and figures. 6.2:1 on a control's fill on a card."
         },
         "warn": {
           "$type": "color",
@@ -1483,6 +1493,21 @@
           "com.sprintengine": {
             "role": "data",
             "use": "The cap on a candle (D12)."
+          }
+        }
+      },
+      "gust-ink": {
+        "$type": "color",
+        "$value": "{ref.color.mark.gust-ink}",
+        "$description": "The gust in words and figures. --color-gust-ink.",
+        "$extensions": {
+          "com.sprintengine": {
+            "role": "data",
+            "use": "A gust written as a figure beside the wind.",
+            "modes": {
+              "light": "{ref.color.mark.gust-ink}",
+              "dark": "{ref.color.night.gust-ink}"
+            }
           }
         }
       },

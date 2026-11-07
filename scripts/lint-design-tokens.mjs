@@ -117,6 +117,7 @@ const MAP = {
   "--color-wind-k65": "sem.color.wind.k65",
   "--color-now-marker": "sem.color.now-marker",
   "--color-gust": "sem.color.gust",
+  "--color-gust-ink": "sem.color.gust-ink",
   "--color-weather-sun": "sem.color.weather.sun",
   "--color-weather-rain": "sem.color.weather.rain",
   "--color-weather-cloud": "sem.color.weather.cloud",
