@@ -890,8 +890,8 @@ function AboutPart() {
       </h4>
       <p>
         A plain chart in dark or white, set in Inter: the chart&rsquo;s magenta
-        for the best, red for the time now, and the hour you are reading
-        outlined.
+        for the best, a plain line for the time now, and the hour you are
+        reading outlined.
       </p>
     </>
   );

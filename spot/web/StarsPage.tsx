@@ -53,7 +53,7 @@ import { useWidth } from "./useWidth";
 
 const styles = tv({
   slots: {
-    main: "flex max-w-page flex-col gap-5 pt-7 pb-12 max-sm:pt-5",
+    main: "flex max-w-form flex-col gap-5 pt-7 pb-12 max-sm:pt-5",
     // The key: the glyphs in a column of their own, the words beside them,
     // so the lines start together.
     glyphs:
@@ -62,7 +62,7 @@ const styles = tv({
     glyphMark: "flex",
     dark: ["text-ink-muted", MONO_LABEL],
     section: "flex flex-col gap-3 pt-6",
-    p: "m-0 max-w-reading font-body text-prose text-ink-2",
+    p: "m-0 max-w-measure font-body text-prose text-ink-2",
     figures: "m-0 font-body text-label text-ink-muted tabular-nums",
     // A table in a soft card, a hairline between its rows.
     table:
