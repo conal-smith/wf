@@ -162,7 +162,8 @@ export interface ScrubBarProps {
   units: Units;
   nightHours: NightHours;
   /**
-   * The spot's page, at the hour in hand; null where there is none.
+   * The spot's page, at the hour in hand; null where there is none. On the
+   * screen the way there is the spot's name on the map; this is the keys'.
    */
   href: string | null;
   /** A model that reaches the hour the map's own does not, and its chip. */
@@ -769,8 +770,10 @@ export default function ScrubBar({
         </div>
       )}
 
-      {/* The spot's name, and the way to its page. */}
-      {spot && <h2 className="sb-name">{spot.name}</h2>}
+      {/* The spot's name, and the way to its page, for a screen reader and
+          the keys: on the screen they are its name beside it on the map.
+          Shown while the link has the focus. */}
+      {spot && <h2 className="sb-name sr-only">{spot.name}</h2>}
       {/* A point's coordinates: its name where no place names it. */}
       {isPoint && spot && (
         <p className="sb-coords sr-only">{spot.county || spot.name}</p>
