@@ -46,17 +46,19 @@
   top: 12px;
   right: 124px;
   margin: 0;
+  max-width: max(96px, calc(100% - 760px));
+  overflow: hidden;
   font: 600 var(--text-body) / 1.4 var(--font-body);
   color: var(--color-ink);
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
-@media (max-width: 720px) {
+@container scrub (max-width: 860px) {
   .sb-name {
     position: static;
+    max-width: none;
     margin-bottom: 4px;
     padding-right: 112px;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
   .sb-page {
     top: 6px;
