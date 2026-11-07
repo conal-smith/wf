@@ -402,7 +402,9 @@ test.describe("a first visit, with no favourites", () => {
     );
     // The list comes to what the fit shows, and it holds: no second fit.
     await expect
-      .poll(async () => (await head(page)) === (await pillsInside(page)))
+      .poll(
+        async () => (await cards(page).count()) === (await pillsInside(page)),
+      )
       .toBe(true);
     const settled = await headIds(page);
     const camera = await page.evaluate(
@@ -439,16 +441,21 @@ const rest = async (page: Page) => {
   await expect(page.locator(".map-lights.is-moving")).toHaveCount(0);
 };
 
-/** A place on the chart with no light on it, to take hold of the map. */
-const openWater = (page: Page) =>
-  page.evaluate(() => {
+/**
+ * A place on the chart with no light on it, to take hold of the map: from its
+ * right side for a drag to the left, so the pointer stays in the window.
+ */
+const openWater = (page: Page, fromRight = false) =>
+  page.evaluate((fromRight) => {
     const box = document.querySelector(".map-panel")!.getBoundingClientRect();
     for (let y = box.top + 150; y < box.bottom - 80; y += 40)
-      for (let x = box.left + 80; x < box.right - 80; x += 40)
+      for (let k = 80; k < box.width - 80; k += 40) {
+        const x = fromRight ? box.right - k : box.left + k;
         if (document.elementFromPoint(x, y)?.closest(".maplibregl-canvas"))
           return { x, y };
+      }
     throw new Error("no room on the chart");
-  });
+  }, fromRight);
 
 /** The chart dragged by this much, the button held until `held` has looked. */
 async function drag(
@@ -457,7 +464,7 @@ async function drag(
   dy: number,
   held?: () => Promise<void>,
 ) {
-  const at = await openWater(page);
+  const at = await openWater(page, dx < 0);
   await page.mouse.move(at.x, at.y);
   await page.mouse.down();
   await page.mouse.move(at.x + dx / 2, at.y + dy / 2, { steps: 5 });
@@ -510,13 +517,14 @@ test.describe("Nearby follows the map beside the list", () => {
     await page.goto("/");
     await expect(cards(page).first()).toBeVisible({ timeout: 30000 });
     await expect(lights(page)).toHaveCount(149, { timeout: 30000 });
-    await button(page, "Zoom in").click();
-    await button(page, "Zoom in").click();
     await rest(page);
     await expect
-      .poll(async () => (await head(page)) === (await pillsInside(page)))
+      .poll(
+        async () => (await cards(page).count()) === (await pillsInside(page)),
+      )
       .toBe(true);
     const before = await headIds(page);
+    expect(before.length).toBeGreaterThan(0);
     const box = (await panel(page).boundingBox())!;
     // Held mid-pan, the list has not moved; let go, it has.
     await drag(page, -box.width * 0.8, 0, async () => {
@@ -526,7 +534,9 @@ test.describe("Nearby follows the map beside the list", () => {
     await expect.poll(() => headIds(page)).not.toEqual(before);
     // Each card a pill in view, the head saying how many.
     await expect
-      .poll(async () => (await head(page)) === (await pillsInside(page)))
+      .poll(
+        async () => (await cards(page).count()) === (await pillsInside(page)),
+      )
       .toBe(true);
     expect(await pills(page).count()).toBe(await cards(page).count());
     // No distances, and nothing asked of the browser.
@@ -582,6 +592,12 @@ test.describe("Nearby follows the map beside the list", () => {
     await expect(cards(page)).toHaveCount(0);
     await expect(pills(page)).toHaveCount(0);
     expect(await head(page)).toBe(0);
+    for (let i = 0; i < 4; i++) {
+      await button(page, "Zoom out").click();
+      await rest(page);
+    }
+    await expect(empty).toHaveCount(0);
+    await expect.poll(() => head(page)).toBeGreaterThan(0);
   });
 
   test("a card under the pointer changes neither the list nor the map", async ({
@@ -590,12 +606,14 @@ test.describe("Nearby follows the map beside the list", () => {
     await page.goto("/");
     await expect(cards(page).first()).toBeVisible({ timeout: 30000 });
     await expect(lights(page)).toHaveCount(149, { timeout: 30000 });
-    await button(page, "Zoom in").click();
     await rest(page);
     await expect
-      .poll(async () => (await head(page)) === (await pillsInside(page)))
+      .poll(
+        async () => (await cards(page).count()) === (await pillsInside(page)),
+      )
       .toBe(true);
     const before = await headIds(page);
+    expect(before.length).toBeGreaterThan(3);
     for (const id of before.slice(0, 4)) {
       await page.locator(`[data-spot-card="${id}"]`).hover();
       await expect(

@@ -162,6 +162,74 @@ test("the map fills in without moving the page", async ({ page }) => {
   expect(cls).toBeLessThan(0.1);
 });
 
+test("the home page holds all 149 lights beside the list and stays quick", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(() => {
+    const w = window as unknown as { __cls: number; __long: number[] };
+    w.__cls = 0;
+    w.__long = [];
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries() as (PerformanceEntry & {
+        value: number;
+        hadRecentInput: boolean;
+      })[])
+        if (!entry.hadRecentInput) w.__cls += entry.value;
+    }).observe({ type: "layout-shift", buffered: true });
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) w.__long.push(entry.duration);
+    }).observe({ type: "longtask", buffered: true });
+  });
+  const opened = Date.now();
+  await page.goto("/");
+  await expect(page.locator("[data-spot-card]").first()).toBeVisible({
+    timeout: 30000,
+  });
+  const firstCard = Date.now() - opened;
+  await expect(page.locator(".spot-marker")).toHaveCount(149, {
+    timeout: 30000,
+  });
+  const allLights = Date.now() - opened;
+  await expect(page.locator("[data-spot-card]").nth(12)).toBeVisible({
+    timeout: 30000,
+  });
+  await page.waitForTimeout(2000);
+  const { cls, long } = await page.evaluate(() => {
+    const w = window as unknown as { __cls: number; __long: number[] };
+    return { cls: w.__cls, long: w.__long };
+  });
+  // Out to the whole country, the most the list ever has to take in at once.
+  const zoomed = Date.now();
+  await page
+    .getByRole("region", { name: "The chart, at the spots on the list" })
+    .getByRole("button", { name: "Zoom out" })
+    .click();
+  await expect(page.locator(".map-lights.is-moving")).toHaveCount(0);
+  await expect.poll(() => page.locator("[data-spot-card]").count()).toBe(30);
+  const settled = Date.now() - zoomed;
+  const during = await page.evaluate(() =>
+    (window as unknown as { __long: number[] }).__long.slice(),
+  );
+  const moved = during.slice(long.length);
+  test.info().annotations.push({
+    type: "home page",
+    description: JSON.stringify({
+      firstCard,
+      allLights,
+      cls,
+      longTasks: long.length,
+      longest: Math.max(0, ...long),
+      settled,
+      longestMoving: Math.max(0, ...moved),
+    }),
+  });
+  expect(cls).toBeLessThan(0.1);
+  // Generous, for a software-rendered map in a headless browser. A list that
+  // took 149 cards, or a label pass over every dot, is over this at once.
+  expect(Math.max(0, ...long, ...moved)).toBeLessThan(1000);
+});
+
 test("stepping through the forecast answers within an interaction budget", async ({
   page,
 }) => {
