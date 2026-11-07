@@ -315,7 +315,7 @@ test("over the whole chart nothing of it is fetched, and Layers says to zoom in"
     "true",
   );
   await expect(panel.locator('[data-layer-note="foil"]')).toHaveText(
-    "Zoom in to see.",
+    "Zoom in for this hour's depths.",
   );
 
   // In to a bay's zoom, the index is read and the note goes.

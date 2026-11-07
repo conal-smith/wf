@@ -1183,6 +1183,17 @@
     transform 0.2s,
     opacity 0.2s;
 }
+/* Beside the list the riding places lead: a station steps back to the ground,
+   with its gold kept as an edge, and the map's foot says what the edge means. */
+.map-canvas.is-plain .obs {
+  height: 19px;
+  border-color: var(--color-line);
+  border-left: 3px solid var(--color-buoy);
+  background: var(--color-ground);
+  color: var(--color-ink-2);
+  font-weight: 500;
+  box-shadow: none;
+}
 /* A finger's reach, beyond the pill. */
 .obs::before {
   content: "";
@@ -1669,6 +1680,31 @@
 .frame-status.is-error {
   color: var(--color-warn);
 }
+/* What the chart's colours mean, above the small print at the chart's left
+   (src/MapScales.tsx): the rail and Gust stand at the right. */
+.map-scales {
+  position: absolute;
+  left: 16px;
+  bottom: calc(100% + 42px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(208px, calc(100vw - 128px));
+  pointer-events: none;
+}
+.map-scale {
+  padding: 6px 8px 4px;
+  border-radius: var(--radius-control);
+  background: var(--color-ground);
+}
+.map-scale-name {
+  display: block;
+  font: 500 var(--text-caption) / 1.2 var(--font-body);
+  color: var(--color-ink-muted);
+}
+.map-scale figure {
+  margin: 3px 0 0;
+}
 /* Inside .map-footer, standing on the scrub bar's top edge. Not placed from
    a measured height: that lands a frame or more after the bar changes height,
    and until then the "i" stood where its old edge was. */
@@ -1896,14 +1932,28 @@
 }
 /* The map's two modes at its foot, as the mock-up has them: the plain map
    with the spots, and the chart, which opens the full chart with its layers. */
-.panel-when {
+.panel-foot {
   position: absolute;
   left: 12px;
   bottom: 12px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
   padding: 4px 10px;
   border-radius: 999px;
   background: var(--color-ground);
   box-shadow: var(--shadow-float);
   font: 500 12px/1.4 var(--font-body);
   pointer-events: none;
+}
+.panel-key {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  color: var(--color-ink-muted);
+}
+.panel-key i {
+  width: 3px;
+  height: 12px;
+  background: var(--color-buoy);
 }

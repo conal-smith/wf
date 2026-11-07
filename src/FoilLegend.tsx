@@ -52,8 +52,8 @@ export default function FoilLegend({
         </p>
       ) : far ? (
         <p className="foil-at" data-foil-far>
-          {FOIL_ZOOM_NOTE} It is drawn closer in, where a bay&rsquo;s shallows
-          can be read.
+          From this far out it is a faint blue along the coast, with no figures
+          in it. {FOIL_ZOOM_NOTE}
         </p>
       ) : error ? (
         <p className="foil-at is-error" role="status">

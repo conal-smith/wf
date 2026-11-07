@@ -19,10 +19,7 @@ import {
   SoundingsGlyph,
   TidalDepthGlyph,
 } from "./chartGlyphs";
-import { DepthScale } from "./DepthScale";
-import { KnotScale } from "./KnotScale";
 import type { InfoSection } from "./mapInfoContext";
-import { RainScale } from "./RainScale";
 
 /** What the chart draws, and the way to change each part of it. */
 export interface LayerChoices {
@@ -89,8 +86,8 @@ export interface LayerTile {
   info?: { label: string; at: InfoSection };
   /** What it cannot draw just now, while it is on. */
   note?: string | null;
-  /** The scale its colours are read on, shown under its name while it is on. */
-  scale?: ReactNode;
+  /** A word on what it is drawing, under its name: not a fault, so no dot. */
+  hint?: string | null;
   /** New to the chart: marked so beside its name. */
   isNew?: boolean;
   /**
@@ -172,15 +169,12 @@ export function layerGroups({
       glyph: <ChartGlyph glyph={glyphs.wind} size={14} />,
       rule: "any",
       tiles: [
-        {
-          ...windPart(
-            "wash",
-            "Coloured wind",
-            "Speed as colour",
-            <ColouredWindGlyph size={18} />,
-          ),
-          scale: <KnotScale />,
-        },
+        windPart(
+          "wash",
+          "Coloured wind",
+          "Speed as colour",
+          <ColouredWindGlyph size={18} />,
+        ),
         windPart(
           "particles",
           "Particles",
@@ -213,7 +207,8 @@ export function layerGroups({
             <TidalDepthGlyph size={18} />,
             { label: "About tidal depth", at: "foil" },
           ),
-          scale: <DepthScale />,
+          note: null,
+          hint: layers.foil ? notes.foil : null,
         },
         {
           ...part(
@@ -248,7 +243,6 @@ export function layerGroups({
             <RainGlyph size={18} />,
             { label: "About rain", at: "rain" },
           ),
-          scale: <RainScale />,
           isNew: true,
         },
       ],
@@ -304,6 +298,24 @@ export function layerGroups({
   ];
 }
 
+/**
+ * Coloured wind and the tidal depth exclude each other: each paints the sea,
+ * and the one reads through neither. Turning either on turns the other off.
+ * Turning one off leaves the other as it was.
+ */
+export function excludeWashFoil(
+  wind: WindLayers,
+  layers: ChartLayers,
+  nextWind: WindLayers,
+  nextLayers: ChartLayers,
+): { wind: WindLayers; layers: ChartLayers } {
+  if (nextWind.wash && !wind.wash && nextLayers.foil)
+    return { wind: nextWind, layers: { ...nextLayers, foil: false } };
+  if (nextLayers.foil && !layers.foil && nextWind.wash)
+    return { wind: { ...nextWind, wash: false }, layers: nextLayers };
+  return { wind: nextWind, layers: nextLayers };
+}
+
 /** One of the rail's buttons: a layer's glyph, its name, and its switch. */
 export interface RailItem {
   id: string;
@@ -312,8 +324,8 @@ export interface RailItem {
   on: boolean;
   /** What it cannot draw just now, said beside its name. */
   note?: string | null;
-  /** The scale its colours are read on, under its name while it is on. */
-  scale?: ReactNode;
+  /** A word on what it is drawing, under its name: not a fault, so no dot. */
+  hint?: string | null;
   press: () => void;
 }
 
@@ -337,7 +349,7 @@ export function railGroups(groups: LayerGroup[]) {
           glyph: tile.glyph,
           on: tile.on,
           note: tile.note,
-          scale: tile.scale,
+          hint: tile.hint,
           press: tile.on && none ? none.press : tile.press,
         })),
     };

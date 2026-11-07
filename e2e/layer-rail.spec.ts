@@ -105,12 +105,11 @@ test("the rail's switches: a layer on and off, the wind's two layers each by its
     "aria-pressed",
     "true",
   );
-  // Its name to its left, with no pointer on it, and its scale under the name
-  // while it is on.
+  // Its name, and whether it is on, to its left under the pointer.
+  await railButton(page, "Rain").hover();
   const tip = railButton(page, "Rain").locator(".lr-tip");
   await expect(tip).toBeVisible();
   await expect(tip).toContainText("Rain · on");
-  await expect(tip.locator(".rain-scale")).toBeVisible();
   const at = (await tip.boundingBox())!;
   const button = (await railButton(page, "Rain").boundingBox())!;
   expect(at.x + at.width).toBeLessThanOrEqual(button.x);
@@ -217,7 +216,7 @@ test("the rail is a toolbar: one stop on Tab, the arrows walk it, Space switches
   await expect(rail(page)).toHaveAttribute("aria-orientation", "vertical");
   await page.keyboard.press("Tab");
   await expect(railButton(page, "Coloured wind")).toBeFocused();
-  // Its name stands beside it for the keys too.
+  // Its name shows on the keys' focus too.
   await expect(
     railButton(page, "Coloured wind").locator(".lr-tip"),
   ).toBeVisible();
@@ -294,7 +293,7 @@ test.describe("on a phone", () => {
     hasTouch: true,
   });
 
-  test("Layers opens the rail from the zoom, clear of the scrub bar, every layer named", async ({
+  test("Layers opens the rail from the zoom, clear of the scrub bar, and a tap says what it switched", async ({
     page,
   }) => {
     await page.goto("/?spot=brandon");
@@ -321,8 +320,8 @@ test.describe("on a phone", () => {
         (el) => el.scrollHeight <= el.clientHeight + 48,
       ),
     ).toBe(true);
-    // A finger has no pointer to rest on a button, so each name stands beside
-    // its button for as long as the rail is open.
+    // A finger has no pointer to rest on it: a tap names the layer, and
+    // whether it is on now, for a moment.
     const loupe = railButton(page, "Loupe");
     await loupe.scrollIntoViewIfNeeded();
     // Near its top: scrolled to the rail's foot, Gust's picture just over his
@@ -330,12 +329,38 @@ test.describe("on a phone", () => {
     await loupe.tap({ position: { x: 22, y: 10 } });
     await expect(loupe).toHaveAttribute("aria-pressed", "true");
     const tip = loupe.locator(".lr-tip");
+    const shown = () =>
+      tip.evaluate((el) => Number(getComputedStyle(el).opacity));
     await expect(tip).toHaveText("Loupe · on");
-    await expect(tip).toBeVisible();
-    await page.waitForTimeout(1600);
-    await expect(tip).toBeVisible();
+    await expect.poll(shown).toBe(1);
+    await expect.poll(shown, { timeout: 3000 }).toBe(0);
     // And Layers shuts it.
     await zoomLayers(page).tap();
     await expect(rail(page)).toHaveCount(0);
   });
+});
+
+test("coloured wind and the tidal depth turn each other off", async ({
+  page,
+}) => {
+  await page.goto("/?map");
+  await zoomLayers(page).click();
+  await railButton(page, "Coloured wind").click();
+  await expect(railButton(page, "Coloured wind")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(railButton(page, "Tidal depth")).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  await railButton(page, "Tidal depth").click();
+  await expect(railButton(page, "Tidal depth")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(railButton(page, "Coloured wind")).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
 });

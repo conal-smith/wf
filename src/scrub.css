@@ -36,12 +36,31 @@
   background: var(--color-ground);
   font: 500 var(--text-label) var(--font-body);
   color: var(--color-ink);
-  text-decoration: none;
-  clip-path: inset(50%);
+  text-decoration: underline;
+  text-underline-offset: 2px;
   white-space: nowrap;
 }
-.sb-page:focus-visible {
-  clip-path: none;
+/* The open place, at the bar's head with the way to its page. */
+.sb-name {
+  position: absolute;
+  top: 12px;
+  right: 124px;
+  margin: 0;
+  font: 600 var(--text-body) / 1.4 var(--font-body);
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .sb-name {
+    position: static;
+    margin-bottom: 4px;
+    padding-right: 112px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sb-page {
+    top: 6px;
+  }
 }
 
 /* ---- the readings ---- */
@@ -239,7 +258,7 @@
   opacity: 0.45;
 }
 .sb-now-line {
-  stroke: var(--color-now);
+  stroke: var(--color-ink-2);
   stroke-width: 1.5;
 }
 .sb-head line {

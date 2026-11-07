@@ -60,7 +60,7 @@ import { parseWindLayers, type WindLayers } from "../force5/src/windLayer";
 import { isFocusStyle, loupeRose, type FocusStyle } from "../force5/src/focus";
 import ScrubBar from "./ScrubBar";
 import MapControls from "./MapControls";
-import { LAYER_DEFAULTS } from "./layerGroups";
+import { LAYER_DEFAULTS, excludeWashFoil } from "./layerGroups";
 import { tourOffered, tourSeen } from "./tourOffer";
 import { SiteMenu } from "../force5/src/SiteMenu";
 import {
@@ -79,6 +79,7 @@ import {
 import { MAP_ASK_EVENT } from "./PagesOverMap";
 import { saveChartCentre } from "./lastView";
 import { InfoPop } from "./InfoPop";
+import MapScales from "./MapScales";
 import useRunRefresh, {
   loadNewerRun,
   RunRecovery,
@@ -262,8 +263,6 @@ const NO_NAMES: ReadonlySet<string> = new Set();
 const SPLIT = "(min-width: 1100px)";
 /** The wind beside the list: no colour and no particles (the map is plain there). */
 const PLAIN_WIND = { wash: false, particles: false } as const;
-/** No foilable depth beside the list, the same empty list every render. */
-const NO_FOIL: FoilView[] = [];
 /** How long the chart takes to open out from beside the list, or back. */
 const OPEN_MS = 420;
 
@@ -486,12 +485,18 @@ export default function App() {
         // (src/layerGroups.tsx): names a rider once hid come back.
         names: true,
         satellite: parseSatelliteOption(saved.satellite),
+        // The two exclude each other since 2026-11-06 (src/layerGroups.tsx). A
+        // rider who kept both had asked for the coloured wind: the tidal depth
+        // was on by default.
+        foil:
+          (saved.foil ?? DEFAULT_LAYERS.foil) &&
+          !parseWindLayers(store.get(WIND_KEY), store.get(OLD_WIND_KEY)).wash,
       };
     } catch {
       return DEFAULT_LAYERS;
     }
   });
-  const chooseWind = (next: WindLayers) => {
+  const saveWind = (next: WindLayers) => {
     setWind(next);
     store.set(WIND_KEY, JSON.stringify(next));
   };
@@ -504,9 +509,22 @@ export default function App() {
     setFocusStyle(style);
     store.set(FOCUS_KEY, style);
   };
-  const chooseLayers = (next: MapLayers) => {
+  const saveLayers = (next: MapLayers) => {
     setLayers(next);
     store.set(LAYERS_KEY, JSON.stringify(next));
+  };
+  // Coloured wind and the tidal depth exclude each other: turning either on
+  // turns the other off.
+  const chooseWind = (next: WindLayers) => {
+    const settled = excludeWashFoil(wind, layers, next, layers);
+    saveWind(settled.wind);
+    if (settled.layers.foil !== layers.foil)
+      saveLayers({ ...layers, foil: settled.layers.foil });
+  };
+  const chooseLayers = (next: MapLayers) => {
+    const settled = excludeWashFoil(wind, layers, wind, next);
+    saveLayers({ ...next, foil: settled.layers.foil });
+    if (settled.wind.wash !== wind.wash) saveWind(settled.wind);
   };
   const controls = useRef<Controls | null>(null);
   const [mapReady, setMapReady] = useState(false);
@@ -1248,7 +1266,8 @@ export default function App() {
     const c = controls.current?.map?.getCenter();
     if (areas && c) setFoilNearId(nearestArea(areas, c.lng, c.lat)?.id ?? null);
   }, [foilState.manifest]);
-  const foilTime = column?.time ?? null;
+  // At the hour on show: the chart's, or beside the list the cards'.
+  const foilTime = (page === "chart" ? column : lightColumn)?.time ?? null;
   // Each area's water level at the hour (the station's tide, or behind a
   // weir the basin's own), and the station's tide it came from.
   const foilTides = useMemo(() => {
@@ -2353,7 +2372,6 @@ export default function App() {
     () => ({
       ...layers,
       depths: false,
-      foil: false,
       currents: false,
       rain: false,
       // The stations' and buoys' own wind, beside the spots' forecast.
@@ -2523,9 +2541,13 @@ export default function App() {
                     </Button>
                   </div>
                   {panelWhen && (
-                    <span className="panel-when" data-panel-when>
-                      {panelWhen}
-                    </span>
+                    <div className="panel-foot">
+                      <span data-panel-when>{panelWhen}</span>
+                      <span className="panel-key">
+                        <i aria-hidden="true" />
+                        Measured wind
+                      </span>
+                    </div>
                   )}
                 </div>
               )}
@@ -2592,12 +2614,11 @@ export default function App() {
                     readings={readings}
                     covered={() => !!document.querySelector(OVER_THE_CHART)}
                     onPick={tapChart}
-                    // Beside the list the map is plain, every layer off but the
-                    // names: the chart's layers are the full chart's (the Spot
-                    // finder mock-up, 2026-10-31).
+                    // Beside the list the map is plain: no wind, and of the
+                    // chart's layers only the tidal depth and the names.
                     wind={onChart ? wind : PLAIN_WIND}
                     layers={onChart ? layers : plainLayers}
-                    foil={onChart ? foilViews : NO_FOIL}
+                    foil={foilViews}
                     currents={onChart ? currents.features : null}
                     rain={onChart ? rain.view : null}
                     satellite={onChart ? satellite.image : null}
@@ -2676,6 +2697,11 @@ export default function App() {
                 >
                   {/* The small print rides over the scrub bar's top edge, in its
                   own layout: never a frame behind it (map.css). */}
+                  <MapScales
+                    wind={wind.wash}
+                    depth={layers.foil && !foilFar}
+                    rain={layers.rain && !!rain.view}
+                  />
                   <div className="map-print">
                     <InfoPop label="Sources and small print" wide>
                       {sources}
