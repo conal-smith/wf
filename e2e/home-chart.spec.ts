@@ -543,6 +543,31 @@ test.describe("Nearby follows the map beside the list", () => {
     await expect(cards(page).filter({ hasText: / km · / })).toHaveCount(0);
   });
 
+  test("the full chart and back leaves the map where it was, and no list is drawn for the chart's moves", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await expect(cards(page).first()).toBeVisible({ timeout: 30000 });
+    await expect(lights(page)).toHaveCount(149, { timeout: 30000 });
+    await rest(page);
+    const box = (await panel(page).boundingBox())!;
+    await drag(page, -box.width / 2, 0);
+    await expect
+      .poll(
+        async () => (await cards(page).count()) === (await pillsInside(page)),
+      )
+      .toBe(true);
+    const before = await headIds(page);
+    await button(page, "Full chart").click();
+    await expect(onChart(page)).toBeVisible();
+    await rest(page);
+    expect(await headIds(page)).toEqual(before);
+    await page.keyboard.press("Escape");
+    await expect(panel(page)).toBeVisible();
+    await rest(page);
+    await expect.poll(() => headIds(page)).toEqual(before);
+  });
+
   test("Favourites keeps the rider's own list on a pan", async ({ page }) => {
     await openHome(page);
     const before = await headIds(page);
