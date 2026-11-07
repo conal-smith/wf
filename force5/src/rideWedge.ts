@@ -197,10 +197,10 @@ const span = (a: number, b: number): Span => {
  * nothing to show either. In the dark or below the rider's floor, only the
  * wind: no no-go, no reaches, no slow downwind, no drift. With a beach, the reach that heads
  * out to sea is cut off at it, as the light's wedge is, and the other is the
- * way home; if neither heads out, nothing is drawn but the wind, as the wedge
- * is not. With no beach (a tapped point, a place whose facing is not known)
- * or in an offshore wind, both are plain reaches, uncut: there is no out to
- * name, and no home but upwind.
+ * way home. With no beach (a tapped point, a place whose facing is not known),
+ * in an offshore wind, or an onshore one with neither heading out, both are
+ * plain reaches, uncut: there is no out to name, and no home but upwind, or
+ * nothing but home.
  */
 export function rideRose(
   rider: Rider,
@@ -239,7 +239,8 @@ export function rideRose(
         ? { ...span(sea[0], sea[1]), kind: "out" as const }
         : { ...t, kind: "home" as const };
     });
-    if (!reaches.some((r) => r.kind === "out")) return bare;
+    if (!reaches.some((r) => r.kind === "out"))
+      reaches = tacks.map((t) => ({ ...t, kind: "reach" }));
   }
   return {
     ...bare,

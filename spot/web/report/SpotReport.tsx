@@ -21,7 +21,7 @@ import {
   currentUnits,
   type CurrentReading,
 } from "../../../force5/src/currentReading";
-import { loupeRose, roseScale } from "../../../force5/src/focus";
+import { faintRose, loupeRose, roseScale } from "../../../force5/src/focus";
 import { modelName } from "../../../force5/src/lead";
 import { modelEntry, modelHue } from "../../../force5/src/manifests";
 import { POINT_SOURCE_KM } from "../../../force5/src/pointSource";
@@ -642,6 +642,20 @@ export function SpotReport({
           units,
         )
       : null;
+  const loupeWind = loupeMeasured
+    ? {
+        windKn: loupeMeasured.reading.windKn,
+        from: loupeMeasured.reading.from!,
+      }
+    : {
+        windKn: shown?.hour.wind?.wind_kn ?? null,
+        from: shown?.hour.wind?.direction_deg ?? null,
+      };
+  const loupeFaint = faintRose(
+    rider,
+    { ...loupeWind, daylight: !!shown?.hour.daylight },
+    facing,
+  );
   const loupeShore = loupeMeasured
     ? measuredShore(loupeMeasured, facing)
     : shown?.shore;
@@ -749,6 +763,7 @@ export function SpotReport({
                 picture={picture}
                 tide={tide}
                 loupe={loupe}
+                faint={loupeFaint}
                 facing={facing}
                 scale={scale}
                 className={s.photo()}

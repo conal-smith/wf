@@ -263,7 +263,7 @@ describe("rideRose", () => {
     ]);
   });
 
-  it("keeps only the wind in the dark, below the floor, or where nothing heads out", () => {
+  it("keeps only the wind in the dark or below the floor", () => {
     const bare = (r: ReturnType<typeof rideRose>) =>
       r !== null &&
       r.nogo === null &&
@@ -276,11 +276,17 @@ describe("rideRose", () => {
     expect(
       bare(rideRose(rider(), hour(225, { windKn: 6, gustKn: 7 }), DOLLY)),
     ).toBe(true);
-    // No way upwind in an onshore wind: the light's wedge is empty too.
+    // No way upwind in an onshore wind: the light's wedge is empty, and the
+    // rose says so, two plain reaches, the no-go and the drift home.
     expect(rideWedge(rider(), 18, 20, DOLLY, DOLLY)).toBeNull();
-    expect(
-      bare(rideRose(rider(), hour(DOLLY, { windKn: 18, gustKn: 20 }), DOLLY)),
-    ).toBe(true);
+    const onshore = rideRose(
+      rider(),
+      hour(DOLLY, { windKn: 18, gustKn: 20 }),
+      DOLLY,
+    )!;
+    expect(onshore.reaches.map((r) => r.kind)).toEqual(["reach", "reach"]);
+    expect(onshore.nogo).not.toBeNull();
+    expect(onshore.driftOut).toBe(false);
     // The wind is still there to show.
     expect(
       rideRose(rider(), hour(225, { daylight: false }), DOLLY)!.windFrom,

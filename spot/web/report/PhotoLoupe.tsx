@@ -22,6 +22,7 @@ import {
   type LoupeRose,
   type RoseScale,
 } from "../../../force5/src/focus";
+import type { Rose } from "../../../force5/src/rideWedge";
 import { tv } from "../../../ui/tv";
 import { lift, type PictureTide, type SpotPicture } from "../satellite";
 
@@ -49,6 +50,7 @@ export function PhotoLoupe({
   picture,
   tide,
   loupe,
+  faint,
   facing,
   scale,
   card = false,
@@ -58,6 +60,8 @@ export function PhotoLoupe({
   picture: SpotPicture;
   tide: PictureTide;
   loupe: LoupeRose | null;
+  /** Under the rider's floor: where they could sail, drawn faintly. */
+  faint?: Rose | null;
   facing: number | null;
   scale: RoseScale;
   card?: boolean;
@@ -73,7 +77,9 @@ export function PhotoLoupe({
   const cx = picture.at.x * W;
   const cy = picture.at.y * H;
   const R = (scale.metres / picture.metresPerPixel) * (card ? 0.62 : 1);
-  const rose = loupe ? roseDrawing(loupe.rose, R, card ? null : scale) : null;
+  const rose = loupe
+    ? roseDrawing(faint ?? loupe.rose, R, card ? null : scale)
+    : null;
   const dial = dialDrawing(loupe?.rose.windFrom ?? 0, facing, R);
   const line = card ? 1.8 : 1.5;
   const ticks = card
@@ -189,87 +195,92 @@ export function PhotoLoupe({
           mask={`url(#${id}-m)`}
         />
         <g transform={`translate(${f1(cx)} ${f1(cy)})`}>
-          {rose?.nogo && (
-            <g data-rose-nogo>
-              <path
-                d={rose.nogo.fill}
-                className="fill-photo-shade"
-                fillOpacity={0.3}
-              />
-              <path d={rose.nogo.fill} fill={`url(#${id}-h)`} />
-              {rose.nogo.edges.map((e, i) => (
-                <line
-                  key={i}
-                  x1={e.x1}
-                  y1={e.y1}
-                  x2={e.x2}
-                  y2={e.y2}
-                  className="stroke-photo-line"
-                  strokeOpacity={0.5}
-                  strokeWidth={1}
-                  vectorEffect="non-scaling-stroke"
-                />
-              ))}
-            </g>
-          )}
-          {rose?.fans.map((fan, i) => (
-            <g key={i} data-rose-fan={fan.kind}>
-              {fan.fill && <path d={fan.fill} fill={`url(#${id}-f)`} />}
-              {fan.edges.map((e, j) => (
-                <line
-                  key={j}
-                  x1={e.x1}
-                  y1={e.y1}
-                  x2={e.x2}
-                  y2={e.y2}
-                  className="stroke-photo-line"
-                  strokeOpacity={0.9}
-                  strokeWidth={line}
-                  strokeDasharray={fan.kind === "home" ? "6 5" : undefined}
-                  vectorEffect="non-scaling-stroke"
-                />
-              ))}
-              {fan.kind === "home" && (
+          <g
+            opacity={faint ? 0.5 : undefined}
+            data-rose-faint={!!faint || undefined}
+          >
+            {rose?.nogo && (
+              <g data-rose-nogo>
                 <path
-                  d={fan.arc}
-                  className="fill-none stroke-photo-line"
-                  strokeOpacity={0.85}
-                  strokeWidth={line}
-                  strokeDasharray="6 5"
-                  vectorEffect="non-scaling-stroke"
+                  d={rose.nogo.fill}
+                  className="fill-photo-shade"
+                  fillOpacity={0.3}
                 />
-              )}
-              {fan.head && <path d={fan.head} className="fill-photo-line" />}
-            </g>
-          ))}
-          {rose?.slow && (
-            <path
-              d={rose.slow}
-              className="fill-none stroke-photo-line"
-              strokeOpacity={0.7}
-              strokeWidth={line}
-              strokeDasharray="1 6"
-              strokeLinecap="round"
-              vectorEffect="non-scaling-stroke"
-            />
-          )}
-          {rose?.drift && (
-            <g
-              className={
-                rose.drift.out
-                  ? "fill-photo-red stroke-photo-red"
-                  : "fill-photo-line stroke-photo-line"
-              }
-            >
-              <line
-                {...rose.drift.line}
-                strokeWidth={line + 0.4}
+                <path d={rose.nogo.fill} fill={`url(#${id}-h)`} />
+                {rose.nogo.edges.map((e, i) => (
+                  <line
+                    key={i}
+                    x1={e.x1}
+                    y1={e.y1}
+                    x2={e.x2}
+                    y2={e.y2}
+                    className="stroke-photo-line"
+                    strokeOpacity={0.5}
+                    strokeWidth={1}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                ))}
+              </g>
+            )}
+            {rose?.fans.map((fan, i) => (
+              <g key={i} data-rose-fan={fan.kind}>
+                {fan.fill && <path d={fan.fill} fill={`url(#${id}-f)`} />}
+                {fan.edges.map((e, j) => (
+                  <line
+                    key={j}
+                    x1={e.x1}
+                    y1={e.y1}
+                    x2={e.x2}
+                    y2={e.y2}
+                    className="stroke-photo-line"
+                    strokeOpacity={0.9}
+                    strokeWidth={line}
+                    strokeDasharray={fan.kind === "home" ? "6 5" : undefined}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                ))}
+                {fan.kind === "home" && (
+                  <path
+                    d={fan.arc}
+                    className="fill-none stroke-photo-line"
+                    strokeOpacity={0.85}
+                    strokeWidth={line}
+                    strokeDasharray="6 5"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                )}
+                {fan.head && <path d={fan.head} className="fill-photo-line" />}
+              </g>
+            ))}
+            {rose?.slow && (
+              <path
+                d={rose.slow}
+                className="fill-none stroke-photo-line"
+                strokeOpacity={0.7}
+                strokeWidth={line}
+                strokeDasharray="1 6"
                 strokeLinecap="round"
                 vectorEffect="non-scaling-stroke"
               />
-              <path d={rose.drift.head} strokeWidth={0} />
-            </g>
-          )}
+            )}
+            {rose?.drift && (
+              <g
+                className={
+                  rose.drift.out
+                    ? "fill-photo-red stroke-photo-red"
+                    : "fill-photo-line stroke-photo-line"
+                }
+              >
+                <line
+                  {...rose.drift.line}
+                  strokeWidth={line + 0.4}
+                  strokeLinecap="round"
+                  vectorEffect="non-scaling-stroke"
+                />
+                <path d={rose.drift.head} strokeWidth={0} />
+              </g>
+            )}
+          </g>
           {rose?.rings.map((ring, i) => (
             <circle
               key={i}

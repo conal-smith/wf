@@ -2,7 +2,7 @@
 // nothing. Pure geometry, so the sizes can be tested without a map; WindMap.tsx
 // draws them.
 import { offshoreSpans, rideRose, type Rose, type Span } from "./rideWedge";
-import type { Rider } from "./stars";
+import { windBand, type Rider } from "./stars";
 import {
   beaufort,
   isForce,
@@ -460,6 +460,26 @@ export function dialDrawing(
     needle: `M${f1(tx)} ${f1(ty)}L${f1(ax)} ${f1(ay)}L${f1(mx)} ${f1(my)}L${f1(bx)} ${f1(by)}Z`,
     pin: polar(to, r + LOUPE_BAND / 2),
   };
+}
+
+/**
+ * The rose a rider could hold in daylight were there wind to ride: what the
+ * satellite picture draws faintly under their floor. Null at night, with no
+ * direction, or once the hour's own rose shows it.
+ */
+export function faintRose(
+  rider: Rider,
+  hour: { windKn: number | null; from: number | null; daylight: boolean },
+  facing: number | null,
+): Rose | null {
+  const floor = windBand(rider).min;
+  if (!hour.daylight || hour.from === null) return null;
+  if (hour.windKn !== null && hour.windKn >= floor) return null;
+  return rideRose(
+    rider,
+    { windKn: floor, gustKn: null, from: hour.from, daylight: true },
+    facing,
+  );
 }
 
 /** What the loupe is given for the hour: the rose, the beach, and the reading for its foot. */

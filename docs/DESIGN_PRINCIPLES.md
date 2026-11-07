@@ -982,3 +982,9 @@ as Settings does, with an arrow for each wind. The needle stands on that same si
 pointing out across the rim, so an offshore wind's needle is in the red. Compass
 words stay the wind's own, "SW" for a wind from the south-west, as every forecast
 says it.
+
+**2026-11-07 — The loupe is always on the satellite picture.** The owner: "we've
+already built this primitive... What direction you can sail in, that's what we
+need to show here." A rideable hour always draws the rose: in an onshore wind
+with no way out, two plain reaches, the no-go and the drift. Under the rider's
+floor, in daylight, the picture draws the same rose faintly.
