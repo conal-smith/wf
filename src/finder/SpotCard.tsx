@@ -21,7 +21,8 @@ import {
   type ReactNode,
 } from "react";
 import { Heart } from "lucide-react";
-import { loupeRose, roseScale } from "../../force5/src/focus";
+import { faintRose, loupeRose, roseScale } from "../../force5/src/focus";
+import { Loupe } from "../../shared/web/Loupe";
 import { speedShort, unitLabel } from "../../force5/src/units";
 import {
   measuredAt,
@@ -48,7 +49,6 @@ import {
 import type { PlaceHour } from "../ratings";
 import { clock, type StripColumn } from "../strip";
 import { HOUR, type Best, type DayRow } from "./finder";
-import { Rose } from "./Rose";
 import type { Readings } from "./useReadings";
 
 export const cardStyles = tv({
@@ -183,6 +183,7 @@ export function SpotPicture({
     hour && hour.windKn !== null
       ? loupeRose(rider, hour, spot.facing ?? null, units)
       : null;
+  const faint = hour ? faintRose(rider, hour, spot.facing ?? null) : null;
   return (
     <div
       className={s.picture({ className })}
@@ -202,12 +203,20 @@ export function SpotPicture({
           onError={() => setFailed(true)}
         />
       )}
-      {size && (
-        <Rose
+      {size && r > 0 && (
+        // In units of a hundredth of the rim, as the loupe's small one is drawn.
+        <Loupe
+          width={(size.width * 100) / r}
+          height={(size.height * 100) / r}
+          cx={((place ? place.x : size.width / 2) * 100) / r}
+          cy={((place ? place.y : size.height / 2) * 100) / r}
+          r={100}
           loupe={loupe}
-          r={r}
-          x={place ? place.x : size.width / 2}
-          y={place ? place.y : size.height / 2}
+          faint={faint}
+          facing={spot.facing ?? null}
+          scale={null}
+          card
+          className="pointer-events-none"
         />
       )}
       {children}

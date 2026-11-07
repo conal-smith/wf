@@ -988,3 +988,9 @@ already built this primitive... What direction you can sail in, that's what we
 need to show here." A rideable hour always draws the rose: in an onshore wind
 with no way out, two plain reaches, the no-go and the drift. Under the rider's
 floor, in daylight, the picture draws the same rose faintly.
+
+**2026-11-07 — One loupe.** The owner: "we've kind of built two primitives... we
+just have one loupe." The satellite picture and the finder's cards draw the same
+component, `Loupe` (shared/web/Loupe.tsx), a card's in small; the card's own
+drawing is gone. The chart draws the same rose and dial from the same geometry
+(force5/src/focus.ts) over the map.
