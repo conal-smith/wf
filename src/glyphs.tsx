@@ -3,13 +3,19 @@
  * the theme through src/map.css: an arrow blowing downwind, and the red star
  * a rider keeps a spot with.
  */
-import { useContext, type ReactNode } from "react";
+import { useContext } from "react";
 import { compass } from "../force5/src/weather";
 import { InfoButton } from "./InfoPop";
 import { MapInfoOpen } from "./mapInfoContext";
 
 /** An arrow blowing downwind for a wind from `from` degrees. */
-export function WindArrow({ from, size = 13 }: { from: number; size?: number }) {
+export function WindArrow({
+  from,
+  size = 13,
+}: {
+  from: number;
+  size?: number;
+}) {
   return (
     <svg
       className="g-arrow"
@@ -28,44 +34,6 @@ export function WindArrow({ from, size = 13 }: { from: number; size?: number }) 
         />
       </g>
     </svg>
-  );
-}
-
-/** The red star a rider keeps a spot with, filled once it is kept. */
-export function StarToggle({
-  on,
-  name,
-  onToggle,
-  size = 17,
-  children,
-}: {
-  on: boolean;
-  name: string;
-  onToggle: () => void;
-  size?: number;
-  children?: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      className="star-toggle"
-      aria-pressed={on}
-      aria-label={`${on ? "Unstar" : "Star"} ${name}`}
-      title={on ? "Starred: a favourite" : "Star: keep it as a favourite"}
-      onClick={(event) => {
-        event.stopPropagation();
-        onToggle();
-      }}
-    >
-      <svg width={size} height={size} viewBox="0 0 16 16" aria-hidden="true">
-        <path
-          d="M8 1.3 L10 6.1 L15.1 6.5 L11.2 9.8 L12.5 14.8 L8 12.1 L3.6 14.9 L4.8 9.9 L0.9 6.6 L6 6.1 Z"
-          strokeWidth="1.3"
-          strokeLinejoin="round"
-        />
-      </svg>
-      {children}
-    </button>
   );
 }
 

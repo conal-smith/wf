@@ -423,7 +423,7 @@ test("a star keeps the place where the map keeps it, and opening it counts", asy
   await expect(star).toHaveAttribute("aria-pressed", "false", {
     timeout: 30000,
   });
-  await expect(star).toHaveAccessibleName("Star Brandon Bay");
+  await expect(star).toHaveAccessibleName("Save Brandon Bay");
   await star.click();
   await expect(star).toHaveAttribute("aria-pressed", "true");
   const stored = await page.evaluate(() =>

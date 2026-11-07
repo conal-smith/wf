@@ -1598,8 +1598,7 @@
 @media (pointer: coarse) {
   /* A finger's target round the small glyph, without moving it. */
   .info-i::after,
-  .help-q::after,
-  .star-toggle::after {
+  .help-q::after {
     content: "";
     position: absolute;
     inset: -13px;
@@ -1621,34 +1620,6 @@
 .ip-small {
   font-size: 13px;
   color: var(--color-ink-muted);
-}
-
-/* The red star a rider keeps a spot with. */
-.star-toggle {
-  position: relative;
-  display: inline-grid;
-  place-items: center;
-  flex: none;
-  padding: 2px;
-  border: 0;
-  background: none;
-  cursor: pointer;
-}
-.star-toggle svg path {
-  fill: none;
-  stroke: var(--color-pen);
-}
-@media (hover: hover) and (pointer: fine) {
-  .star-toggle:hover svg path {
-    fill: color-mix(in srgb, var(--color-pen) 18%, transparent);
-  }
-}
-.star-toggle[aria-pressed="true"] svg path {
-  fill: var(--color-pen);
-}
-.star-toggle:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 1px;
 }
 
 /* ---------- the glyphs ---------- */

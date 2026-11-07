@@ -352,7 +352,7 @@ test.describe("on a desktop", () => {
     await expect(cards(page)).toHaveCount(3);
     await cards(page)
       .filter({ hasText: "Keel" })
-      .getByRole("button", { name: "Star Keel Beach" })
+      .getByRole("button", { name: "Save Keel Beach" })
       .click();
     await expect(cards(page)).toHaveCount(2);
     await expect(page).toHaveURL(/\/$/);
@@ -391,7 +391,7 @@ test.describe("on a desktop", () => {
     await expect(page.locator("[data-finder-note]")).toHaveCount(0);
     await scope(page).getByRole("button", { name: "Favourites" }).click();
     const empty = page.locator("[data-finder-empty]");
-    await expect(empty).toContainText("Star a spot and it shows here.");
+    await expect(empty).toContainText("Save a spot and it shows here.");
     await expect(cards(page)).toHaveCount(0);
     // And a way from it to a spot to star: the top bar's search, Nearby,
     // or every spot's page.
@@ -1145,7 +1145,7 @@ test.describe("on a phone", () => {
     });
     await scope(page).getByRole("button", { name: "Favourites" }).tap();
     await expect(page.locator("[data-finder-empty]")).toContainText(
-      "Star a spot and it shows here.",
+      "Save a spot and it shows here.",
     );
     await scope(page).getByRole("button", { name: "Nearby" }).tap();
     await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1);

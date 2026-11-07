@@ -720,7 +720,7 @@ export default function SpotFinder(props: FinderProps) {
                 )
               ) : scope === "favourites" ? (
                 <>
-                  Star a spot and it shows here. Find one by name with the
+                  Save a spot and it shows here. Find one by name with the
                   search at the top, see the{" "}
                   <Link
                     href={scopeAddress(window.location.href, "near")}

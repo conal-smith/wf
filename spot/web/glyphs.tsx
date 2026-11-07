@@ -3,6 +3,7 @@
  * weather's colours, as the dock draws it), and the star a rider keeps a
  * place by. Each says in words what it draws, for a screen reader and a hover.
  */
+import { Heart } from "lucide-react";
 import type { HourWeather } from "../../mcp/api/forecast";
 import { presentWeather, skyOf } from "../../force5/src/presentWeather";
 import { ChartGlyph } from "../../shared/web/ChartGlyph";
@@ -52,23 +53,14 @@ export function SkyGlyph({
   );
 }
 
-/** The star a rider keeps a place by: an outline in the pen, filled when kept. */
-export function KeepStar({ on, size = 17 }: { on: boolean; size?: number }) {
-  const s = glyph();
+/** The heart a rider saves a place by: an outline in ink, filled when saved. */
+export function KeepHeart({ on, size = 17 }: { on: boolean; size?: number }) {
   return (
-    <svg
-      className={s.svg()}
-      width={size}
-      height={size}
-      viewBox="0 0 16 16"
+    <Heart
+      size={size}
+      strokeWidth={1.5}
+      fill={on ? "currentColor" : "none"}
       aria-hidden="true"
-    >
-      <path
-        className={[s.pen(), on ? "fill-pen" : "fill-none"].join(" ")}
-        d="M8 1.3 L10 6.1 L15.1 6.5 L11.2 9.8 L12.5 14.8 L8 12.1 L3.6 14.9 L4.8 9.9 L0.9 6.6 L6 6.1 Z"
-        strokeWidth={1.3}
-        strokeLinejoin="round"
-      />
-    </svg>
+    />
   );
 }

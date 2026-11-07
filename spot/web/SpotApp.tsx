@@ -30,7 +30,7 @@ import { usePageTitle } from "../../shared/web/usePageTitle";
 import { Button, Empty, Heading, Row, Rows, Skeleton } from "../../ui";
 import { RING, tv } from "../../ui/tv";
 import { SpotFrame } from "./Frame";
-import { KeepStar } from "./glyphs";
+import { KeepHeart } from "./glyphs";
 import { loadSpotPictures } from "./satellite";
 import StarsPage from "./StarsPage";
 import { useSpotForecast } from "./useSpotForecast";
@@ -222,13 +222,13 @@ function KeepButton({ id, name }: { id: string; name: string }) {
   return (
     <Button
       pressed={on ? "worded" : false}
-      aria-label={on ? `Unstar ${name}` : `Star ${name}`}
+      aria-label={`Save ${name}`}
       data-keep-star
       onClick={() => setOn(store.toggle(id))}
     >
-      <KeepStar on={on} />
+      <KeepHeart on={on} />
       <span className={s.starWord()} aria-hidden="true">
-        {on ? "Starred" : "Star"}
+        {on ? "Saved" : "Save"}
       </span>
     </Button>
   );

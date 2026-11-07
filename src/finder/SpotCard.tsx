@@ -20,6 +20,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { Heart } from "lucide-react";
 import { loupeRose, roseScale } from "../../force5/src/focus";
 import { speedShort, unitLabel } from "../../force5/src/units";
 import {
@@ -214,8 +215,8 @@ export function SpotPicture({
   );
 }
 
-/** The red star a rider keeps a place with. */
-export function StarToggle({
+/** The heart a rider saves a place with, as the market saves a listing. */
+export function SaveToggle({
   spot,
   on,
   onToggle,
@@ -233,21 +234,19 @@ export function StarToggle({
       icon
       pressed={on ? "worded" : false}
       className={className}
-      aria-label={`Star ${spot.name}`}
-      title={on ? "Starred" : "Star"}
+      aria-label={`Save ${spot.name}`}
+      title={on ? "Saved" : "Save"}
       onClick={(event) => {
         event.stopPropagation();
         onToggle();
       }}
     >
-      <svg width={16} height={16} viewBox="0 0 16 16" aria-hidden="true">
-        <path
-          className={on ? "fill-pen stroke-pen" : "fill-none stroke-pen"}
-          d="M8 1.3 L10 6.1 L15.1 6.5 L11.2 9.8 L12.5 14.8 L8 12.1 L3.6 14.9 L4.8 9.9 L0.9 6.6 L6 6.1 Z"
-          strokeWidth={1.4}
-          strokeLinejoin="round"
-        />
-      </svg>
+      <Heart
+        size={16}
+        strokeWidth={1.5}
+        fill={on ? "currentColor" : "none"}
+        aria-hidden="true"
+      />
     </Button>
   );
 }
@@ -375,7 +374,7 @@ export function SpotCard(props: SpotCardProps) {
               </span>
             )}
           </div>
-          <StarToggle
+          <SaveToggle
             spot={spot}
             on={starred}
             onToggle={onToggleStar}
