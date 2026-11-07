@@ -43,7 +43,7 @@ test("the week is a Wind section and a Waves section, each with its own readout"
     "Wind",
     "Direction",
     "Wind blend",
-    "Gust factor",
+    "Gusts",
     "Sky",
     "Rain",
     "Tide",

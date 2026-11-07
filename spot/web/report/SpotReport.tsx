@@ -1567,7 +1567,7 @@ const WIND_NAME: Record<WindBand, string> = {
   wind: "Wind",
   dir: "Direction",
   blend: "Wind blend",
-  gusts: "Gust factor",
+  gusts: "Gusts",
   sky: "Sky",
   rain: "Rain",
   tide: "Tide",

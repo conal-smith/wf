@@ -1198,7 +1198,7 @@ test.describe("on a phone, the week graph", () => {
       "Wind",
       "Direction",
       "Wind blend",
-      "Gust factor",
+      "Gusts",
       "Sky",
       "Rain",
       "Tide",
