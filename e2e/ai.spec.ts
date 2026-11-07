@@ -28,6 +28,7 @@ test("the line, then a row for each app with its maker's mark", async ({
   );
   await expect(page.locator("[data-app]")).toHaveText([
     "Add to ChatGPT",
+    "Add to Claude",
     "Add to Grok",
     "Add to Perplexity",
     "Add to Mistral Vibe",
@@ -44,12 +45,14 @@ test("the line, then a row for each app with its maker's mark", async ({
   );
   expect(marks).toEqual([
     "url(/logos/openai-blossom.svg)",
+    "/logos/claude-spark.svg",
     "url(/logos/grok-logomark.svg)",
     "url(/logos/perplexity-symbol.svg)",
     "/logos/mistral-icon.svg",
   ]);
   for (const file of [
     "openai-blossom",
+    "claude-spark",
     "grok-logomark",
     "perplexity-symbol",
     "mistral-icon",
@@ -73,8 +76,12 @@ test("the line, then a row for each app with its maker's mark", async ({
   );
   await expect(lines(page)).toHaveCount(0);
 
-  // Claude is not listed until Anthropic has approved its mark here.
-  await expect(button(page, "claude")).toHaveCount(0);
+  // Claude opens its connector dialog filled in, in a new tab.
+  await expect(button(page, "claude")).toHaveAttribute(
+    "href",
+    /^https:\/\/claude\.ai\/customize\/connectors\?modal=add-custom-connector&/,
+  );
+  await expect(button(page, "claude")).toHaveAttribute("target", "_blank");
   await expect(button(page, "chatgpt")).toHaveAttribute("target", "_blank");
   await expect(button(page, "chatgpt")).toHaveAttribute(
     "href",
@@ -127,6 +134,15 @@ test("a button that copies the address says where to paste it", async ({
   await expect(
     page.locator("li", { has: button(page, "other") }),
   ).toContainText("Address copied. Paste it in your app.");
+
+  // Claude is filled in for the rider: nothing is left to say.
+  await page.route("https://claude.ai/**", (route) => route.abort());
+  const [claude] = await Promise.all([
+    context.waitForEvent("page"),
+    button(page, "claude").click(),
+  ]);
+  await claude.close();
+  await expect(lines(page)).toHaveCount(0);
 });
 
 test.describe("with motion", () => {
@@ -181,6 +197,7 @@ test.describe("on an iPhone", () => {
     // Followed in the same tab, which is what opens the app rather than a
     // browser tab.
     await expect(button(page, "chatgpt")).not.toHaveAttribute("target", /.*/);
+    await expect(button(page, "claude")).not.toHaveAttribute("target", /.*/);
 
     // Every row the same width, the line over the phone, the list under it.
     const boxes = await page
@@ -220,6 +237,10 @@ test.describe("on Android", () => {
     await expect(button(page, "grok")).toHaveAttribute(
       "href",
       /^intent:\/\/grok\.com\/connectors#.+;package=ai\.x\.grok;/,
+    );
+    await expect(button(page, "claude")).toHaveAttribute(
+      "href",
+      /^intent:\/\/claude\.ai\/customize\/connectors\?.+;package=com\.anthropic\.claude;/,
     );
     // An app whose maker hands it no such link opens on the web.
     await expect(button(page, "lechat")).toHaveAttribute(

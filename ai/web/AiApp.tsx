@@ -53,12 +53,6 @@ const styles = tv({
 /** A row of the list: an app, or the last, for any other. */
 type Row = Assistant | "other";
 
-/**
- * The apps the page lists. Claude is left off until Anthropic has approved
- * its mark here, as its trademark guidelines ask; ai/web/install.ts still
- * knows how to add wingfoil.ie to it.
- */
-const LISTED: readonly Assistant[] = ASSISTANTS.filter((a) => a !== "claude");
 
 /**
  * Each app's mark, its maker's own file, unaltered. A mark its maker draws in
@@ -328,7 +322,7 @@ export default function AiApp() {
           </p>
           <div className="ai-apps">
             <ul className="ai-list ai-reveal" data-scene="list">
-              {LISTED.map((a) => {
+              {ASSISTANTS.map((a) => {
                 const plan = addPlan(a, device, url);
                 return (
                   <li key={a}>
