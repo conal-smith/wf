@@ -33,6 +33,49 @@ export function nearestLight(
   return best;
 }
 
+/** A light with whether it is a muted dot (./lights.ts). */
+export interface MarkCentre extends LightCentre {
+  dot: boolean;
+}
+
+/**
+ * The light a press on a button meant: the nearest of its own kind. A press on
+ * a pill is never a dot's, however near one stands to the pill's end; a pill
+ * stands over a dot, so a press that reached a dot missed the pills.
+ */
+export function pressedLight(
+  lights: readonly MarkCentre[],
+  x: number,
+  y: number,
+  reach: number,
+  onDot: boolean,
+): string | null {
+  return nearestLight(
+    lights.filter((light) => light.dot === onDot),
+    x,
+    y,
+    reach,
+  );
+}
+
+/**
+ * The light a tap through a move meant, with no button to go by: the nearest
+ * pill or ring in `reach`, else a dot, only where it was all but hit
+ * (`dotReach`).
+ */
+export function tappedLight(
+  lights: readonly MarkCentre[],
+  x: number,
+  y: number,
+  reach: number,
+  dotReach: number,
+): string | null {
+  return (
+    pressedLight(lights, x, y, reach, false) ??
+    pressedLight(lights, x, y, dotReach, true)
+  );
+}
+
 /** An arrow key's way across the chart. */
 export type Way = "left" | "right" | "up" | "down";
 

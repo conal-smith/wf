@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { nearestLight, nextLight, thinLights } from "./lightHit";
+import {
+  nearestLight,
+  nextLight,
+  pressedLight,
+  tappedLight,
+  thinLights,
+} from "./lightHit";
 
 describe("nearestLight", () => {
   const lights = [
@@ -89,5 +95,32 @@ describe("thinLights", () => {
       light("c", 30, 1),
     ]);
     expect([...thin]).toEqual(["b"]);
+  });
+});
+
+describe("a press among pills and muted dots", () => {
+  // A pill, wide enough that a press on its end is far from its centre, with
+  // a dot just past that end.
+  const marks = [
+    { id: "pill", x: 100, y: 100, dot: false },
+    { id: "dot", x: 124, y: 100, dot: true },
+    { id: "far", x: 300, y: 300, dot: true },
+  ];
+
+  it("takes a press on a pill's end as the pill's, though a dot is nearer", () => {
+    expect(pressedLight(marks, 118, 100, 22, false)).toBe("pill");
+  });
+
+  it("takes a press that reached a dot as a dot's", () => {
+    expect(pressedLight(marks, 118, 100, 22, true)).toBe("dot");
+  });
+
+  it("through a move, a pill in reach comes before a nearer dot", () => {
+    expect(tappedLight(marks, 116, 100, 22, 10)).toBe("pill");
+  });
+
+  it("through a move, a dot only where it was all but hit", () => {
+    expect(tappedLight(marks, 305, 300, 22, 10)).toBe("far");
+    expect(tappedLight(marks, 315, 300, 22, 10)).toBeNull();
   });
 });

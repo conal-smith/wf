@@ -1150,6 +1150,42 @@
   right: auto;
   top: 50%;
 }
+/* A spot beside the list that is not on it (force5/src/lights.ts): a small
+   muted dot, in no stars' colour and no offshore red, under everything. Its
+   reading is in its card, under the pointer or the keys. */
+.map-canvas.is-plain .lt.lt-dot {
+  width: 20px;
+  height: 20px;
+  z-index: 1;
+}
+.map-canvas.is-plain .lt.lt-dot > svg {
+  display: block;
+  transform: scale(0.34);
+}
+.map-canvas.is-plain .lt.lt-dot .lt-ring {
+  fill: var(--color-line-strong);
+  stroke: var(--color-ground);
+  stroke-width: 3;
+  stroke-dasharray: none;
+}
+.map-canvas.is-plain .lt.lt-dot :is(.lt-n, .lt-strike, .lt-wind),
+.map-canvas.is-plain .lt.lt-dot .lt-pill,
+.map-canvas.is-plain .lt.lt-dot .lt-lab {
+  display: none;
+}
+.map-canvas.is-plain .lt.lt-dot.is-open > svg,
+.map-canvas.is-plain .lt.lt-dot:focus-visible > svg {
+  transform: scale(0.52);
+}
+@media (hover: hover) and (pointer: fine) {
+  .map-canvas .lt.lt-dot::before {
+    width: 20px;
+    height: 20px;
+  }
+  .map-canvas.is-plain .lt.lt-dot:hover > svg {
+    transform: scale(0.52);
+  }
+}
 
 /* ---------- the Live wind layer ---------- */
 /* A weather station or buoy, at the wind it last measured
@@ -1327,7 +1363,7 @@
   font-weight: 500;
   color: var(--color-ink-2);
 }
-.map-card-when::before {
+.obs-card .map-card-when::before {
   content: "";
   display: inline-block;
   width: 7px;
@@ -1339,6 +1375,17 @@
 }
 .map-card-when.is-stale {
   color: var(--color-ink-muted);
+}
+/* On a card a finger has pinned: the way to the spot's page, the one part of
+   the card that takes a press. */
+.map-card-link {
+  display: block;
+  margin-top: 8px;
+  padding: 4px 0;
+  font-weight: 600;
+  color: var(--color-ink);
+  text-decoration: underline;
+  pointer-events: auto;
 }
 .map-card-credit {
   margin-top: 6px;
