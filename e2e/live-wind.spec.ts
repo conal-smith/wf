@@ -34,6 +34,8 @@ const star = (page: Page, ids: string[]) =>
 
 const cards = (page: Page) => page.locator("[data-spot-card]");
 const lights = (page: Page) => page.locator(".spot-marker");
+/** The spots on the list, as pills; the rest are muted dots. */
+const pills = (page: Page) => page.locator(".spot-marker:not(.lt-dot)");
 const readings = (page: Page) => page.locator(".obs");
 const card = (page: Page) => page.locator(".obs-card");
 const reading = (page: Page, id: string) =>
@@ -43,7 +45,7 @@ async function openHome(page: Page, ids = ["brandon", "dollymount", "keel"]) {
   await star(page, ids);
   await page.goto("/");
   await expect(cards(page)).toHaveCount(ids.length, { timeout: 30000 });
-  await expect(lights(page)).toHaveCount(ids.length, { timeout: 30000 });
+  await expect(pills(page)).toHaveCount(ids.length, { timeout: 30000 });
 }
 
 test.describe("beside the list", () => {
@@ -54,10 +56,11 @@ test.describe("beside the list", () => {
   }) => {
     await openHome(page);
     await expect(page.locator(".map-canvas.is-plain")).toHaveCount(1);
-    await expect(lights(page).locator(".spot-marker.pending")).toHaveCount(0, {
-      timeout: 30000,
-    });
-    for (const light of await lights(page).all()) {
+    await expect(page.locator(".spot-marker.pending:not(.lt-dot)")).toHaveCount(
+      0,
+      { timeout: 30000 },
+    );
+    for (const light of await pills(page).all()) {
       await expect(light.locator(".lt-pill")).toBeVisible();
       await expect(light.locator(":scope > svg")).toBeHidden();
       // The wind in the rider's units, a whole number; an arrow downwind.

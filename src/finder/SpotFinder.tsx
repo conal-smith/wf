@@ -20,14 +20,24 @@
  * address (`/?tab=favourites`, finder.ts `TAB_PARAM`) once one is chosen, so
  * either can be linked to, kept and reloaded.
  * Near you never asks the browser where the rider is unasked: without
- * their place it is the spots nearest where the chart was, which give no
- * distances, and nothing over the cards says so. "Use my location" is in the
- * filter sheet.
+ * their place it gives no distances, and nothing over the cards says so.
+ * "Use my location" is in the filter sheet.
+ *
+ * Nearby follows the map (2026-11-07). On a wide screen it is the spots in the
+ * chart's view (finder.ts `spotsInView`), read as the camera settles and never
+ * through a pan: at most `MAX_CARDS` of them, the best, with a quiet line
+ * after the list saying how many are in view; the count at the head is the
+ * true one, and the rest stand on the map as muted dots. An empty view says
+ * so. Until the chart has a view, the list is `listFor`'s, so it is never
+ * empty on first paint. Under that width there is no map to follow, and it is
+ * `listFor`'s always: the spots round the rider, or without their place the
+ * spots nearest where the chart was. Favourites never follows the map.
  *
  * The home page (since 26 October 2026). On a wide screen the chart stands
  * beside the list, drawn by src/App.tsx over the room the list leaves it
- * (`beside`); the list tells it which places it shows, at which hour, which
- * card is under the pointer and where the rider is. Under that width the
+ * (`beside`); the list tells it which places it shows as pills, at which
+ * hour, which card is under the pointer and where the rider is, and it tells
+ * the list what it shows (`view`). Under that width the
  * list is alone, with a button to the chart. No timeline at its head, and
  * not tied to the chart's time. The cards keep one time between them, as a
  * dashboard's charts do: the day stepped to is the day on every card, and an

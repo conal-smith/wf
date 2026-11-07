@@ -32,6 +32,9 @@ const cards = (page: Page) => page.locator("[data-spot-card]");
 const panel = (page: Page) =>
   page.getByRole("region", { name: "The chart, at the spots on the list" });
 const lights = (page: Page) => page.locator(".spot-marker");
+/** The spots on the list, as pills; every other spot is a muted dot. */
+const pills = (page: Page) => page.locator(".spot-marker:not(.lt-dot)");
+const dots = (page: Page) => page.locator(".spot-marker.lt-dot");
 /** The top bar over the list and the chart alike (ui/TopBar.tsx). */
 const bar = (page: Page) => page.locator("[data-top-bar]");
 /** The bar's button to the list, on the full chart. */
@@ -57,10 +60,10 @@ const kept = (page: Page) =>
         .kept === "1",
   );
 
-/** How many of the chart's lights stand inside the box beside the list. */
-const lightsInside = async (page: Page) => {
+/** How many of the list's pills stand inside the box beside the list. */
+const pillsInside = async (page: Page) => {
   const box = (await panel(page).boundingBox())!;
-  const at = await lights(page).evaluateAll((els) =>
+  const at = await pills(page).evaluateAll((els) =>
     els.map((el) => {
       const r = el.getBoundingClientRect();
       return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
@@ -80,13 +83,13 @@ async function openHome(page: Page, ids = ["brandon", "dollymount", "keel"]) {
   await star(page, ids);
   await page.goto("/");
   await expect(cards(page)).toHaveCount(ids.length, { timeout: 30000 });
-  await expect(lights(page)).toHaveCount(ids.length, { timeout: 30000 });
+  await expect(pills(page)).toHaveCount(ids.length, { timeout: 30000 });
 }
 
 test.describe("on a wide screen", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
-  test("the list is the home page, and the chart beside it shows only the listed spots, fitted to them, with no scrub bar", async ({
+  test("the list is the home page, and the chart beside it shows every spot, the listed ones as pills, fitted to them, with no scrub bar", async ({
     page,
   }) => {
     const errors: string[] = [];
@@ -112,8 +115,11 @@ test.describe("on a wide screen", () => {
     await expect(page.locator("[data-panel-when]")).toHaveText(
       /^Stars at \d\d:\d\d (today|tomorrow|on \w+)$/,
     );
+    // And every other spot, a muted dot.
+    await expect(lights(page)).toHaveCount(149);
+    await expect(dots(page)).toHaveCount(146);
     // Every listed spot's light is inside the panel.
-    for (const light of await lights(page).all()) {
+    for (const light of await pills(page).all()) {
       const l = (await light.boundingBox())!;
       expect(l.x).toBeGreaterThan(box.x);
       expect(l.x + l.width).toBeLessThan(box.x + box.width);
@@ -226,7 +232,7 @@ test.describe("on a wide screen", () => {
     const back = async () => {
       await expect(page).toHaveURL(/\/$/);
       await expect(panel(page)).toBeVisible();
-      await expect(lights(page)).toHaveCount(3);
+      await expect(pills(page)).toHaveCount(3);
       await expect(onChart(page)).toHaveCount(0);
       expect(await kept(page)).toBe(true);
     };
@@ -340,10 +346,10 @@ test.describe("on a wide screen", () => {
       timeout: 30000,
     });
     const listed = await cards(page).count();
-    await expect(lights(page)).toHaveCount(listed);
+    await expect(pills(page)).toHaveCount(listed);
     await expect(
       page.locator('.spot-marker[data-spot-id="brandon"]'),
-    ).toHaveCount(0);
+    ).toHaveClass(/\blt-dot\b/);
     await expect(page.getByRole("img", { name: "You are here" })).toBeVisible();
   });
 });
@@ -364,12 +370,9 @@ test.describe("a first visit, with no favourites", () => {
     await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1, {
       timeout: 30000,
     });
-    const listed = await cards(page).count();
-    expect(listed).toBeGreaterThan(3);
-    await expect(lights(page)).toHaveCount(listed, { timeout: 30000 });
     await expect(page.getByRole("img", { name: "You are here" })).toBeVisible();
-    // Opened round the rider, closer in than the list: their mark in the
-    // middle of the box beside it, and the spots further out a pan away.
+    // Opened round the rider: their mark in the middle of the box beside it,
+    // the list what is in view, and the spots further out a pan away.
     const box = (await panel(page).boundingBox())!;
     await expect
       .poll(async () => {
@@ -381,25 +384,338 @@ test.describe("a first visit, with no favourites", () => {
           : Infinity;
       })
       .toBeLessThan(box.width / 3);
-    await expect.poll(() => lightsInside(page)).toBeLessThan(listed);
+    await expect.poll(() => cards(page).count()).toBeLessThan(30);
+    const listed = await cards(page).count();
+    await expect(pills(page)).toHaveCount(listed, { timeout: 30000 });
+    await expect.poll(() => pillsInside(page)).toBe(listed);
   });
 
-  test("location refused: Nearby lists the spots nearest the middle of Ireland, and the chart beside it is fitted to them", async ({
+  test("location not known: the chart opens fitted to the spots nearest the middle of Ireland, once, and Nearby then lists what it shows", async ({
     page,
   }) => {
     await page.goto("/");
     await expect(finder(page)).toHaveAttribute("data-scope", "near");
-    await expect(cards(page)).toHaveCount(12, { timeout: 30000 });
-    await expect(lights(page)).toHaveCount(12, { timeout: 30000 });
+    await expect(cards(page).first()).toBeVisible({ timeout: 30000 });
+    await expect(pills(page).first()).toBeVisible({ timeout: 30000 });
     await expect(page.getByRole("img", { name: "You are here" })).toHaveCount(
       0,
     );
-    await expect.poll(() => lightsInside(page)).toBe(12);
+    // The list comes to what the fit shows, and it holds: no second fit.
+    await expect
+      .poll(async () => (await head(page)) === (await pillsInside(page)))
+      .toBe(true);
+    const settled = await headIds(page);
+    const camera = await page.evaluate(
+      () => document.querySelector(".map-canvas")?.className,
+    );
+    await page.waitForTimeout(1500);
+    expect(await headIds(page)).toEqual(settled);
+    expect(
+      await page.evaluate(
+        () => document.querySelector(".map-canvas")?.className,
+      ),
+    ).toBe(camera);
+  });
+});
+
+/** The count at the head of the list. */
+const head = async (page: Page) =>
+  Number(
+    /(\d+) spots?/.exec(
+      (await page.locator("[data-finder-heading]").textContent()) ?? "",
+    )?.[1] ?? NaN,
+  );
+const headIds = (page: Page) =>
+  cards(page).evaluateAll((els) =>
+    els.map((el) => (el as HTMLElement).dataset.spotCard),
+  );
+const button = (page: Page, name: string) =>
+  panel(page).getByRole("button", { name });
+
+/** The chart at rest: no move on, and its list drawn from where it stopped. */
+const rest = async (page: Page) => {
+  await expect(page.locator(".map-lights.is-moving")).toHaveCount(0);
+  await page.waitForTimeout(700);
+  await expect(page.locator(".map-lights.is-moving")).toHaveCount(0);
+};
+
+/** A place on the chart with no light on it, to take hold of the map. */
+const openWater = (page: Page) =>
+  page.evaluate(() => {
+    const box = document.querySelector(".map-panel")!.getBoundingClientRect();
+    for (let y = box.top + 150; y < box.bottom - 80; y += 40)
+      for (let x = box.left + 80; x < box.right - 80; x += 40)
+        if (document.elementFromPoint(x, y)?.closest(".maplibregl-canvas"))
+          return { x, y };
+    throw new Error("no room on the chart");
+  });
+
+/** The chart dragged by this much, the button held until `held` has looked. */
+async function drag(
+  page: Page,
+  dx: number,
+  dy: number,
+  held?: () => Promise<void>,
+) {
+  const at = await openWater(page);
+  await page.mouse.move(at.x, at.y);
+  await page.mouse.down();
+  await page.mouse.move(at.x + dx / 2, at.y + dy / 2, { steps: 5 });
+  await page.mouse.move(at.x + dx, at.y + dy, { steps: 5 });
+  await held?.();
+  await page.mouse.up();
+  await rest(page);
+}
+
+/** A muted dot clear of every other mark, inside the chart: its id and place. */
+const freeDot = (page: Page) =>
+  page.evaluate(() => {
+    const box = document.querySelector(".map-panel")!.getBoundingClientRect();
+    for (const el of document.querySelectorAll<HTMLElement>(
+      ".spot-marker.lt-dot",
+    )) {
+      const r = el.getBoundingClientRect();
+      const x = r.x + r.width / 2;
+      const y = r.y + r.height / 2;
+      if (
+        x > box.left + 130 &&
+        x < box.right - 130 &&
+        y > box.top + 150 &&
+        y < box.bottom - 80 &&
+        document.elementFromPoint(x, y)?.closest(".spot-marker") === el
+      )
+        return { id: el.dataset.spotId!, x, y };
+    }
+    throw new Error("no muted dot to reach");
+  });
+
+/** Nearby on the whole of the chart, every spot in view, the first visit's. */
+async function wholeChart(page: Page) {
+  await page.goto("/");
+  await expect(cards(page).first()).toBeVisible({ timeout: 30000 });
+  await expect(lights(page)).toHaveCount(149, { timeout: 30000 });
+  for (let i = 0; i < 4; i++) {
+    await button(page, "Zoom out").click();
+    await rest(page);
+  }
+  await expect.poll(() => head(page), { timeout: 30000 }).toBe(149);
+}
+
+test.describe("Nearby follows the map beside the list", () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test("a pan to another part of the country lists the spots there, once the camera settles, with no location set", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await expect(cards(page).first()).toBeVisible({ timeout: 30000 });
+    await expect(lights(page)).toHaveCount(149, { timeout: 30000 });
+    await button(page, "Zoom in").click();
+    await button(page, "Zoom in").click();
+    await rest(page);
+    await expect
+      .poll(async () => (await head(page)) === (await pillsInside(page)))
+      .toBe(true);
+    const before = await headIds(page);
+    const box = (await panel(page).boundingBox())!;
+    // Held mid-pan, the list has not moved; let go, it has.
+    await drag(page, -box.width * 0.8, 0, async () => {
+      await page.waitForTimeout(300);
+      expect(await headIds(page)).toEqual(before);
+    });
+    await expect.poll(() => headIds(page)).not.toEqual(before);
+    // Each card a pill in view, the head saying how many.
+    await expect
+      .poll(async () => (await head(page)) === (await pillsInside(page)))
+      .toBe(true);
+    expect(await pills(page).count()).toBe(await cards(page).count());
+    // No distances, and nothing asked of the browser.
+    await expect(cards(page).filter({ hasText: / km · / })).toHaveCount(0);
+  });
+
+  test("Favourites keeps the rider's own list on a pan", async ({ page }) => {
+    await openHome(page);
+    const before = await headIds(page);
+    await drag(page, -300, 0);
+    expect(await headIds(page)).toEqual(before);
+    await expect(pills(page)).toHaveCount(3);
+    // And Nearby then lists what the map shows; back, the same favourites.
+    await page
+      .getByRole("group", { name: "Which spots" })
+      .getByRole("button", { name: "Nearby" })
+      .click();
+    await expect.poll(() => headIds(page)).not.toEqual(before);
+    await page
+      .getByRole("group", { name: "Which spots" })
+      .getByRole("button", { name: "Favourites" })
+      .click();
+    await expect(cards(page)).toHaveCount(3);
+  });
+
+  test("over the cap: the best 30 cards, the true count, a quiet line, and the rest as dots", async ({
+    page,
+  }) => {
+    await wholeChart(page);
+    await expect(cards(page)).toHaveCount(30);
+    await expect(page.locator("[data-finder-more]")).toHaveText(
+      "149 spots in view, the best 30 here. Zoom in for the rest.",
+    );
+    await expect(pills(page)).toHaveCount(30);
+    await expect(dots(page)).toHaveCount(119);
+  });
+
+  test("open sea: says so, and zooming back out lists spots again", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await expect(cards(page).first()).toBeVisible({ timeout: 30000 });
+    await expect(lights(page)).toHaveCount(149, { timeout: 30000 });
+    await button(page, "Zoom in").click();
+    await button(page, "Zoom in").click();
+    await rest(page);
+    const empty = page.locator("[data-finder-empty]");
+    for (let i = 0; i < 12 && !(await empty.count()); i++)
+      await drag(page, 500, 0);
+    await expect(empty).toHaveText(
+      "No spots in this part of the map. Zoom out or move the map.",
+    );
+    await expect(cards(page)).toHaveCount(0);
+    await expect(pills(page)).toHaveCount(0);
+    expect(await head(page)).toBe(0);
+  });
+
+  test("a card under the pointer changes neither the list nor the map", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await expect(cards(page).first()).toBeVisible({ timeout: 30000 });
+    await expect(lights(page)).toHaveCount(149, { timeout: 30000 });
+    await button(page, "Zoom in").click();
+    await rest(page);
+    await expect
+      .poll(async () => (await head(page)) === (await pillsInside(page)))
+      .toBe(true);
+    const before = await headIds(page);
+    for (const id of before.slice(0, 4)) {
+      await page.locator(`[data-spot-card="${id}"]`).hover();
+      await expect(
+        page.locator(`.spot-marker[data-spot-id="${id}"]`),
+      ).toHaveClass(/\blit\b/);
+      // Longer than the wait before a Favourites card's pan.
+      await page.waitForTimeout(300);
+      await expect(page.locator(".map-lights.is-moving")).toHaveCount(0);
+    }
+    await rest(page);
+    expect(await headIds(page)).toEqual(before);
+  });
+
+  test("a dot under the pointer opens a card with the wind, and lights nothing; the keys open it too", async ({
+    page,
+  }) => {
+    await wholeChart(page);
+    await expect(page.locator(".spot-marker.pending")).toHaveCount(0, {
+      timeout: 30000,
+    });
+    const card = page.locator(".lt-card");
+    await expect(card).toBeHidden();
+    const dot = await freeDot(page);
+    await page.mouse.move(dot.x, dot.y);
+    await expect(card).toBeVisible();
+    await expect(card.locator(".map-card-name")).not.toBeEmpty();
+    await expect(card.locator(".map-card-net")).toHaveText(/^Co\. /);
+    await expect(card.locator(".map-card-speed")).toHaveText(/^(\d+|Calm)$/);
+    await expect(card.locator(".map-card-when")).toHaveText(
+      /^(\d stars?|Dark|Offshore).* at \d\d:\d\d (today|tomorrow|on \w+)$/,
+    );
+    // No pill popped, nothing faded, no card outlined.
+    await expect(page.locator(".spot-marker.lit")).toHaveCount(0);
+    await expect(page.locator(".map-lights.has-lit")).toHaveCount(0);
+    await expect(page.locator("[data-spot-card][data-lit]")).toHaveCount(0);
+    // No link under a mouse: the dot is pressed.
+    await expect(card.locator("a")).toHaveCount(0);
+    await page.mouse.move(5, 5);
+    await expect(card).toBeHidden();
+    // The keys: the card, and Escape shuts it.
+    const light = page.locator(`.spot-marker[data-spot-id="${dot.id}"]`);
+    await light.focus();
+    await expect(card).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(card).toBeHidden();
+  });
+
+  test("a dot pressed opens its spot's page, and so does Enter", async ({
+    page,
+  }) => {
+    await wholeChart(page);
+    const dot = await freeDot(page);
+    await page.mouse.click(dot.x, dot.y);
+    await expect(page).toHaveURL(new RegExp(`/spot/${dot.id}`));
+    await page.goBack();
+    await expect(cards(page).first()).toBeVisible({ timeout: 30000 });
+    await expect(lights(page)).toHaveCount(149, { timeout: 30000 });
+    const again = page.locator(".spot-marker.lt-dot").first();
+    const id = await again.getAttribute("data-spot-id");
+    await again.focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(new RegExp(`/spot/${id}`));
+  });
+
+  test("a pill pressed on Nearby brings its card into view", async ({
+    page,
+  }) => {
+    await wholeChart(page);
+    const last = await page
+      .locator("[data-spot-card]")
+      .last()
+      .getAttribute("data-spot-card");
+    await expect(page).toHaveURL(/\/$/);
+    await page
+      .locator(`.spot-marker[data-spot-id="${last}"]`)
+      .dispatchEvent("click", { detail: 1 });
+    await expect(page.locator(`[data-spot-card="${last}"]`)).toBeInViewport();
+    await expect(page).toHaveURL(/\/$/);
+  });
+});
+
+test.describe("a dot under a finger, beside the list", () => {
+  test.use({ viewport: { width: 1280, height: 800 }, hasTouch: true });
+
+  test("a tap pins its card, which holds the link; a tap elsewhere lets it go", async ({
+    page,
+  }) => {
+    await wholeChart(page);
+    const card = page.locator(".lt-card");
+    const dot = await freeDot(page);
+    await page.touchscreen.tap(dot.x, dot.y);
+    await expect(card).toBeVisible();
+    await expect(page).toHaveURL(/\/$/);
+    const link = card.getByRole("link", { name: "Open spot" });
+    await expect(link).toHaveAttribute("href", new RegExp(`/spot/${dot.id}`));
+    // Over the land's open water, away from the dot: the card goes.
+    const away = await openWater(page);
+    await page.touchscreen.tap(away.x, away.y);
+    await expect(card).toBeHidden();
+    await page.touchscreen.tap(dot.x, dot.y);
+    await expect(card).toBeVisible();
+    const at = (await link.boundingBox())!;
+    await page.touchscreen.tap(at.x + at.width / 2, at.y + at.height / 2);
+    await expect(page).toHaveURL(new RegExp(`/spot/${dot.id}`));
   });
 });
 
 test.describe("under the width for the chart beside the list", () => {
   test.use({ viewport: { width: 900, height: 860 } });
+
+  test("Nearby is the spots nearest the middle of Ireland, with no map to follow", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await expect(cards(page)).toHaveCount(12, { timeout: 30000 });
+    await page.waitForTimeout(1500);
+    await expect(cards(page)).toHaveCount(12);
+    await expect(page.locator(".maplibregl-canvas")).toHaveCount(0);
+    await expect(page.locator("[data-finder-more]")).toHaveCount(0);
+  });
 
   test("the list alone, and the bar's Chart to the full chart, which is Spots there", async ({
     page,

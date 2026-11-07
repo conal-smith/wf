@@ -822,7 +822,8 @@ export function createLights(
     el.replaceChildren();
     const head = part("div", "map-card-head");
     head.append(part("b", "map-card-name", spot.name));
-    if (spot.county) head.append(part("span", "map-card-net", spot.county));
+    if (spot.county)
+      head.append(part("span", "map-card-net", `Co. ${spot.county}`));
     el.append(head);
     if (words.calm) {
       const figures = part("div", "map-card-wind");
