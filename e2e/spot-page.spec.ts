@@ -136,7 +136,7 @@ test("a day card takes the whole page to that day, and today back to now", async
   await page.goto("/spot/brandon");
   await expect(heading(page)).toBeVisible({ timeout: 30000 });
   await expect(page.locator("[data-readout]")).toContainText("Now");
-  const now = await page.locator("[data-now]").innerText();
+  const now = (await page.locator("[data-now]").textContent()) ?? "";
   await page.locator("[data-day-card]").nth(2).click();
   // Midday on that day: the cards over the graph, and its readout, read it.
   await expect(page.locator("[data-readout]")).toContainText("12:00");
