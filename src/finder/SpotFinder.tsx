@@ -46,6 +46,7 @@
  * place's (src/finder/useReadings.ts).
  */
 import { useEffect, useMemo, useState } from "react";
+import type { ViewBounds } from "../../force5/src/squares";
 import type { Rider } from "../../force5/src/stars";
 import type { Units } from "../../force5/src/units";
 import type { Spot } from "../../force5/src/weather";
@@ -62,8 +63,10 @@ import type { PlaceHour } from "../ratings";
 import { irishDate, onDay, openingColumn, type StripColumn } from "../strip";
 import {
   HOUR,
+  MAX_CARDS,
   bestStars,
   cardDates,
+  chooseCards,
   columnsByTime,
   dayOpening,
   dayRow,
@@ -71,13 +74,11 @@ import {
   nearestHour,
   openingDay,
   openingScope,
-  orderSpots,
   pickHour,
-  rankSpots,
   scopeAddress,
   scopeInAddress,
   shownColumn,
-  withStars,
+  spotsInView,
   type Listed,
   type Order,
   type Scope,
@@ -132,6 +133,8 @@ const styles = tv({
     cardsAlone: "rail:grid-cols-2",
     empty:
       "rounded-surface bg-sunken on-card px-4 py-3.5 text-prose leading-normal text-ink-2",
+    // After the cards, when the map shows more than the list holds.
+    more: "m-0 px-0.5 pt-3 text-body leading-normal text-ink-muted",
   },
 });
 
@@ -165,11 +168,18 @@ export interface FinderProps {
   phone: boolean;
   /**
    * The places the finder lists, which it needs rated, and which list (the
-   * tab), so the chart beside it is fitted again when the list is another.
+   * tab), so the chart beside it is fitted again when the list is another:
+   * none ("") until the list is known, while the places are read or the
+   * browser is asked where the rider is.
    */
   onWant: (ids: readonly string[], list: string) => void;
   /** The chart stands beside the list, in the room it leaves on the right. */
   beside?: boolean;
+  /**
+   * What the chart beside the list shows, which Nearby lists; null until
+   * there is a view to follow.
+   */
+  view?: ViewBounds | null;
   /** A mouse comes onto a place's card, or leaves it (null). */
   onHover?: (id: string | null) => void;
   /** The time every card shows, as it changes. */
@@ -210,6 +220,7 @@ export default function SpotFinder(props: FinderProps) {
     phone,
     onWant,
     beside = false,
+    view = null,
     onHover,
     onShown,
     onPlace,
@@ -302,15 +313,18 @@ export default function SpotFinder(props: FinderProps) {
   // empty list's words.
   const placesDue =
     spots.length === 0 && !waiting && (scope === "near" || starred.length > 0);
+  // Beside the chart, Nearby is what the chart shows; before it has a view,
+  // and anywhere else, the list as ever.
+  const following = beside && scope === "near" && view !== null && !waiting;
   const listed = useMemo(
-    () => (waiting ? [] : listFor(scope, spots, starred, place.at, known)),
-    [scope, spots, starred, place.at, known, waiting],
+    () =>
+      waiting
+        ? []
+        : following
+          ? spotsInView(spots, view!, known ? place.at : null)
+          : listFor(scope, spots, starred, place.at, known),
+    [scope, spots, starred, place.at, known, waiting, following, view],
   );
-
-  const wanted = listed.map((l) => l.spot.id);
-  const wantKey = wanted.join(",");
-  const listKey = scope;
-  useEffect(() => onWant(wanted, listKey), [wantKey, listKey]);
   const placeLat = known ? place.at.lat : null;
   const placeLon = known ? place.at.lon : null;
   useEffect(
@@ -326,12 +340,13 @@ export default function SpotFinder(props: FinderProps) {
   // Every half hour: the date, and the hour now as `nearestHour` says it.
   const halfHour = Math.floor(now / (HOUR / 2));
   const dates = useMemo(() => cardDates(now), [halfHour]);
-  const listedSpots = useMemo(() => listed.map((l) => l.spot), [listed]);
+  const allListed = useMemo(() => listed.map((l) => l.spot), [listed]);
   // The day the finder opens on: today, or tomorrow once today's rows are
-  // over at every place listed.
+  // over at every place listed; every place there is while the list follows
+  // the map, so that a pan west at dusk does not step the day back.
   const opensOn = useMemo(
-    () => openingDay(dates, listedSpots, now),
-    [dates, listedSpots, halfHour],
+    () => openingDay(dates, following ? spots : allListed, now),
+    [dates, following, spots, allListed, halfHour],
   );
   // A day stepped to yesterday that is gone now is the opening day again.
   const day = chosen !== null && dates.includes(chosen) ? chosen : opensOn;
@@ -343,17 +358,43 @@ export default function SpotFinder(props: FinderProps) {
     setPicked(null);
   };
   const byTime = useMemo(() => columnsByTime(strip), [strip]);
-  // A tab's places, the best on the day first, then in the order asked.
-  const ranked: Listed[] = useMemo(() => {
-    const rated = listed.map(({ spot, km }) => ({
+  // A tab's places, the best on the day first, then in the order asked; only
+  // the best of them while the list follows the map, and how many there were.
+  const { cards: ranked, total } = useMemo(() => {
+    const rated: Listed[] = listed.map(({ spot, km }) => ({
       spot,
       km,
       best: bestStars(hours.get(spot.id), strip, [day], now),
     }));
     // Nearest first means nothing without the rider's place.
     const by = order === "near" && !known ? "best" : order;
-    return withStars(orderSpots(rankSpots(rated), by), fewest);
-  }, [listed, order, known, fewest, hours, version, strip, day, halfHour]);
+    return chooseCards(rated, by, fewest, following ? MAX_CARDS : Infinity);
+  }, [
+    listed,
+    order,
+    known,
+    fewest,
+    following,
+    hours,
+    version,
+    strip,
+    day,
+    halfHour,
+  ]);
+  // The places the list asks to be rated, and draws as pills: following the
+  // map, those with a card; else every place on the tab, as the fit wants.
+  // In a steady order, so that a new order of the same places asks nothing.
+  const wanted = (following ? ranked : listed).map((l) => l.spot.id);
+  const wantKey = (following ? [...wanted].sort() : wanted).join(",");
+  // The count beside the heading, once the list is the list.
+  const counted = !waiting && !placesDue;
+  const listKey = counted ? scope : "";
+  useEffect(() => onWant(wanted, listKey), [wantKey, listKey]);
+  // The places with a card: their days, their readings and their stations.
+  const listedSpots = useMemo(
+    () => (following ? ranked.map((l) => l.spot) : allListed),
+    [following ? wantKey : allListed],
+  );
 
   const axis = useMemo(() => strip.map((c) => c.validTime), [strip]);
   const readings = useReadings(listedSpots, axis);
@@ -401,8 +442,6 @@ export default function SpotFinder(props: FinderProps) {
   const shown = pick ?? standing;
   useEffect(() => onShown?.(shown), [shown]);
   const headId = "finder-heading";
-  // The count beside the heading, once the list is the list.
-  const counted = !waiting && !placesDue;
   // "today", "tomorrow", "on Thursday": the day shown, in a sentence.
   const onTheDay = onDay(noon, now);
   const canAsk =
@@ -435,8 +474,7 @@ export default function SpotFinder(props: FinderProps) {
                 {scope === "near" ? "Near you" : "Favourites"}
                 {counted && " · "}
               </span>
-              {counted &&
-                (ranked.length === 1 ? "1 spot" : `${ranked.length} spots`)}
+              {counted && (total === 1 ? "1 spot" : `${total} spots`)}
             </h1>
             <Button
               variant="quiet"
@@ -607,6 +645,12 @@ export default function SpotFinder(props: FinderProps) {
                   );
                 })}
               </ul>
+              {total > ranked.length && (
+                <p className={s.more()} data-finder-more>
+                  {total} spots in view, the best {ranked.length} here. Zoom in
+                  for the rest.
+                </p>
+              )}
             </HoverContext.Provider>
           ) : (
             <p className={s.empty()} data-finder-empty>
@@ -635,10 +679,10 @@ export default function SpotFinder(props: FinderProps) {
                 </>
               ) : waiting ? (
                 "Finding spots nearby…"
-              ) : known ? (
-                "No spots within 30 km of you."
+              ) : following ? (
+                "No spots in this part of the map. Zoom out or move the map."
               ) : (
-                ""
+                "No spots within 30 km of you."
               )}
             </p>
           )}
