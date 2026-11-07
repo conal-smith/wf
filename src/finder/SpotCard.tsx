@@ -85,7 +85,11 @@ export const cardStyles = tv({
     windBar: "h-4.5",
     barNum:
       "pointer-events-none absolute top-1/2 -translate-x-1/2 -translate-y-1/2 font-body text-caption font-semibold text-photo-shade",
-    tick: "pointer-events-none absolute -top-0.5 -bottom-0.5 w-0.5 -translate-x-1/2 rounded-full bg-pen",
+    // A notch over the bar, clear of the figures in it: ink for the hour now,
+    // magenta for the day's best on a day ahead.
+    tick: "pointer-events-none absolute -top-1 h-1 w-0.5 -translate-x-1/2 rounded-t-full",
+    tickNow: "bg-ink",
+    tickBest: "bg-chart-magenta",
     hours: "relative h-3.5 font-body text-caption text-ink-muted",
     hour: "absolute -translate-x-1/2",
     // A card while the places are read: the shapes of its parts, each the
@@ -383,6 +387,7 @@ export function SpotCard(props: SpotCardProps) {
             day={day}
             row={row}
             shown={shown}
+            isToday={isToday}
             units={units}
             onPick={onPick}
           />
@@ -404,7 +409,7 @@ const STARS_CSS = [
 /**
  * The day's hours, first light to last, as two gradients: the wind in its
  * own colours with its speed every three hours, and the stars in theirs. A
- * red tick marks the hour shown, where it is on the row: none for an hour
+ * notch marks the hour shown, where it is on the row: none for an hour
  * off either end (today after dark, or before first light), never the last
  * hour standing in for it. A press on either bar picks the hour under it, of
  * this day's, on every card.
@@ -413,12 +418,14 @@ function DayBars({
   day,
   row,
   shown,
+  isToday,
   units,
   onPick,
 }: {
   day: DayRow;
   row: readonly PlaceHour[] | undefined;
   shown: number;
+  isToday: boolean;
   units: Units;
   onPick: (time: number) => void;
 }) {
@@ -455,7 +462,11 @@ function DayBars({
   };
   const tick =
     shownAt < 0 ? null : (
-      <i className={s.tick()} style={{ left: pos(shownAt) }} data-shown-tick />
+      <i
+        className={s.tick({ className: isToday ? s.tickNow() : s.tickBest() })}
+        style={{ left: pos(shownAt) }}
+        data-shown-tick
+      />
     );
   return (
     <div

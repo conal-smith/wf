@@ -519,7 +519,7 @@ describe("an hour, in a line", () => {
   const hour = { windKn: 17.6, gustKn: 23.8, from: 225 };
 
   it("gives the wind as a list gives it", () => {
-    expect(hourWind(hour)).toBe("SW 18g24");
+    expect(hourWind(hour)).toBe("SW 18 g24");
     expect(hourWind({ ...hour, gustKn: null, from: null })).toBe("18");
     expect(hourWind({ ...hour, windKn: null })).toBe("");
   });

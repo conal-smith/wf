@@ -63,6 +63,7 @@ import type { PlaceHour } from "../ratings";
 import {
   clock,
   dayLong,
+  dayShort,
   irishDate,
   onDay,
   openingColumn,
@@ -225,14 +226,12 @@ function DayLead({
   lead,
   next,
   word,
-  now,
   onDay: chooseDay,
 }: {
   lead: BestHour | null;
   next: BestHour | null;
   /** The day shown, for the end of a sentence: "today", "on Monday". */
   word: string;
-  now: number;
   onDay: (date: string) => void;
 }) {
   const s = styles();
@@ -247,7 +246,7 @@ function DayLead({
           <span className={s.leadName()}>{shown.spot.name}</span>
           <StarGlyphs stars={shown.stars} size={12} coloured />
           <span>
-            {!lead && `${onDay(shown.time, now)}, `}
+            {!lead && `${dayShort(shown.time)} `}
             {clock(shown.time)}
           </span>
         </>
@@ -611,7 +610,6 @@ export default function SpotFinder(props: FinderProps) {
               lead={lead}
               next={nextLead}
               word={onTheDay}
-              now={now}
               onDay={chooseDay}
             />
           ) : // Its room, while the hours are read, so the cards do not move
