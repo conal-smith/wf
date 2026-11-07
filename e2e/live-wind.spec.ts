@@ -86,7 +86,7 @@ test.describe("beside the list", () => {
     ).toBeInViewport();
   });
 
-  test("the stations and buoys are gold pills at their last reading, and a card says whose, what and when", async ({
+  test("the stations and buoys are gold-edged tags at their last reading, and a card says whose, what and when", async ({
     page,
   }) => {
     await openHome(page);
@@ -101,15 +101,15 @@ test.describe("beside the list", () => {
         `^Mace Head, Met Éireann: ${kn(mace.speed)} knots, gusting ${kn(mace.gust)}, from .+, measured 22:00$`,
       ),
     );
-    // Gold, and squarer than a spot's pill.
+    // A gold edge, stepped back from the spots, and squarer than their pills.
     const look = await pill.evaluate((el) => {
       const cs = getComputedStyle(el);
       return {
-        bg: cs.backgroundColor,
+        edge: cs.borderLeftColor,
         radius: parseFloat(cs.borderTopLeftRadius),
       };
     });
-    expect(look.bg).toBe("rgb(233, 178, 0)");
+    expect(look.edge).toBe("rgb(233, 178, 0)");
     expect(look.radius).toBeLessThan(8);
     // The station with no gusts says none.
     await expect(reading(page, "ME_03966").locator("sup")).toBeHidden();

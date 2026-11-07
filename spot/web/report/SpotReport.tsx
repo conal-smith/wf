@@ -178,6 +178,8 @@ const styles = tv({
     cards: "grid grid-cols-2 content-start gap-3",
     card: "min-w-0 rounded-surface bg-sunken on-card p-4 wide:px-5",
     wide: "col-span-2",
+    // Two lines held on a phone, so no hour's words move what is under them.
+    lineHeld: "max-wide:min-h-11",
     big: "my-2 flex flex-wrap items-baseline gap-1.5 font-body text-big-sm text-ink wide:text-big",
     unit: "font-body text-prose font-medium text-ink-2",
     gust: "font-body text-lead font-semibold text-gust-ink",
@@ -1288,11 +1290,14 @@ function NowCards({
             </div>
           </>
         ) : (
-          <div className={s.line({ className: "mt-2" })}>
-            {atNow
-              ? "No model reaches this spot just now."
-              : "No model reaches this spot at this hour."}
-          </div>
+          <>
+            <div className={s.big()}>–</div>
+            <div className={s.line()}>
+              {atNow
+                ? "No model reaches this spot just now."
+                : "No model reaches this spot at this hour."}
+            </div>
+          </>
         )}
       </div>
       {!rated ? (
@@ -1301,7 +1306,7 @@ function NowCards({
           <div className={s.line({ className: "my-3.5 min-h-7" })}>
             No stars on open water
           </div>
-          <div className={s.line()}>Stars rate the wind at a shore</div>
+          <div className={s.line({ className: s.lineHeld() })}>Stars rate the wind at a shore</div>
         </div>
       ) : (
         <div className={s.card()} data-your-stars>
@@ -1321,7 +1326,7 @@ function NowCards({
               </span>
             )}
           </div>
-          <div className={s.line()}>
+          <div className={s.line({ className: s.lineHeld() })}>
             {row?.rating
               ? `${row.rating.wing.own ?? row.rating.wing.recommended} m² wing`
               : taken
@@ -1332,24 +1337,26 @@ function NowCards({
           </div>
         </div>
       )}
-      {hasBed && depth !== null ? (
+      {hasBed && (depth !== null || !atNow) ? (
         <div className={s.card()}>
           <span className={s.label()}>Water at the launch</span>
           <div className={s.big()}>
-            {depth.toFixed(1)}
+            {depth === null ? "–" : depth.toFixed(1)}
             <span className={s.unit()}>m</span>
           </div>
           <div className={s.bar()}>
             <span
               className={s.barFill()}
-              style={{ width: `${Math.min(100, (depth / 3) * 100)}%` }}
+              style={{ width: `${Math.min(100, ((depth ?? 0) / 3) * 100)}%` }}
             />
           </div>
-          <div className={s.line()}>
-            {depth < 1
+          <div className={s.line({ className: s.lineHeld() })}>
+            {depth === null
+              ? "No tide reading"
+              : depth < 1
               ? "Under 1 m"
               : until
-                ? `Deep enough until ${clock(until)}`
+                ? `Deep until ${clock(until)}`
                 : "Deep enough"}
           </div>
         </div>
@@ -1360,7 +1367,7 @@ function NowCards({
             {tideHere === null ? "–" : tideHere.toFixed(1)}
             <span className={s.unit()}>m</span>
           </div>
-          <div className={s.line()}>
+          <div className={s.line({ className: s.lineHeld() })}>
             {nextTurn
               ? `${nextTurn.tide === "high" ? "High" : "Low"} at ${clock(nextTurn.time)}`
               : "No tide station near"}
@@ -1373,7 +1380,7 @@ function NowCards({
           {waves?.height_m == null ? "–" : waves.height_m.toFixed(1)}
           <span className={s.unit()}>m</span>
         </div>
-        <div className={s.line()}>
+        <div className={s.line({ className: s.lineHeld() })}>
           {waves?.period_s
             ? `${waves.period_s} s`
             : waves
@@ -1399,14 +1406,14 @@ function NowCards({
               {String(hoursMinutes(left).m).padStart(2, "0")}
               <span className={s.unit()}>min</span>
             </div>
-            <div className={s.line()}>
+            <div className={s.line({ className: s.lineHeld() })}>
               {sun?.sunset ? `Sunset ${clock(sun.sunset)}` : ""}
             </div>
           </>
         ) : (
           <>
             <div className={s.big()}>Dark</div>
-            <div className={s.line()}>
+            <div className={s.line({ className: s.lineHeld() })}>
               {sun?.firstLight && at < sun.firstLight
                 ? `First light ${clock(sun.firstLight)}`
                 : "Until morning"}
@@ -2244,7 +2251,6 @@ function Graph({
   const waveAt = waves && shownAt >= 0 ? waves.rows[shownAt] : null;
   const windReadout = (desktop: boolean) => (
     <Readout
-      said={isNow && !hoverRow}
       row={shownRow}
       chip={desktop ? chip : null}
       // At now, the moment the card above says, not its hour's start.
@@ -2427,6 +2433,7 @@ function Graph({
         y2={axis}
         className="stroke-ink-2"
         strokeWidth={1.5}
+        data-now-line
       />
       {hoverRow && (
         <>
@@ -4490,14 +4497,8 @@ function Readout({
   sea,
   strip,
   root,
-  said = false,
 }: {
   row: SpotRow | null;
-  /**
-   * At Now, on a wide window: the cards at the top of the page say the wind,
-   * the stars, the launch and the sea, so the row keeps to what they do not.
-   */
-  said?: boolean;
   /** The hour's chip, first in the grid on a desktop; a phone's is above. */
   chip: React.ReactNode;
   depth: number | null;
@@ -4549,7 +4550,7 @@ function Readout({
     >
       {chip && <div className={s.ro()}>{chip}</div>}
       <div
-        className={s.ro({ className: `${s.roWide()} ${said ? "cards:hidden" : ""}` })}
+        className={s.ro({ className: s.roWide() })}
         data-readout-wind
       >
         <span className={s.roLabel()}>
@@ -4603,9 +4604,7 @@ function Readout({
         // Two wide on a phone, where one cell has no room for the five
         // stars and a warning's mark beside them.
         <div
-          className={s.ro({
-            className: `max-wide:col-span-2 ${said ? "cards:hidden" : ""}`,
-          })}
+          className={s.ro({ className: "max-wide:col-span-2" })}
         >
           <span className={s.roLabel()}>Stars</span>
           {row?.rating ? (
@@ -4669,7 +4668,7 @@ function Readout({
         </b>
       </div>
       {hasDepth && (
-        <div className={s.ro({ className: said ? "cards:hidden" : undefined })}>
+        <div className={s.ro()}>
           <span className={s.roLabel()}>At the launch</span>
           <b
             className={s.roValue({
@@ -4682,9 +4681,7 @@ function Readout({
       )}
       {sea !== undefined && (
         <div
-          className={s.ro({
-            className: `${s.roWide()} ${said ? "cards:hidden" : ""}`,
-          })}
+          className={s.ro({ className: s.roWide() })}
           data-readout-sea
         >
           <span className={s.roLabel()}>Sea</span>

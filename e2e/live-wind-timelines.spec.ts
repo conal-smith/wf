@@ -50,7 +50,7 @@ test.describe("the spot page", () => {
     expect(Math.max(...times)).toBe(clock);
     // Drawn left of the line at now, in the readings' gold.
     const now = await graph(page)
-      .locator("line.stroke-pen")
+      .locator("line[data-now-line]")
       .first()
       .evaluate((el) => Number(el.getAttribute("x1")));
     const xs = await winds.evaluateAll((els) =>
