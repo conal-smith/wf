@@ -2247,7 +2247,8 @@ function Graph({
       said={isNow && !hoverRow}
       row={shownRow}
       chip={desktop ? chip : null}
-      depth={shownRow ? depthAt(shownRow.time) : null}
+      // At now, the moment the card above says, not its hour's start.
+      depth={shownRow ? depthAt(isNow ? now : shownRow.time) : null}
       rated={rated}
       gust={
         shownRow?.hour.wind

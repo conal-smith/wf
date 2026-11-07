@@ -287,15 +287,17 @@ test("a national region draws on its own station's tide, answers a tap, and only
   expect(errors).toEqual([]);
 });
 
-test("over the whole chart nothing of it is fetched, and Layers says to zoom in", async ({
+test("over the whole chart only the coast's glow is fetched, and Layers says to zoom in", async ({
   page,
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   const asked: string[] = [];
+  let glow = 0;
   page.on("request", (r) => {
     const path = new URL(r.url()).pathname;
-    if (/foildepth|tides-/.test(path)) asked.push(path);
+    if (path.endsWith("/coast-glow.webp")) glow += 1;
+    else if (/foildepth|tides-/.test(path)) asked.push(path);
   });
   await page.route("**/foildepth/index.json", (route) =>
     route.fulfill({ json: index }),
@@ -308,6 +310,7 @@ test("over the whole chart nothing of it is fetched, and Layers says to zoom in"
   });
   await page.waitForTimeout(1000);
   expect(asked).toEqual([]);
+  expect(glow).toBe(1);
   await openFromMenu(page, "Layers");
   const panel = layersRail(page);
   await expect(panel.locator('[data-rail-layer="foil"]')).toHaveAttribute(
