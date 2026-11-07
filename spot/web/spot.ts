@@ -374,8 +374,9 @@ export function rateForecastHour(
 }
 
 /**
- * The hours that become rows: from the top of the current hour, every hour for
- * the first three days and every third Irish hour after that, where the models
+ * The hours that become rows: today whole, from Irish midnight (the ruling of
+ * 25 October 2026, so a rider can look back at the morning), every hour for
+ * three days from now and every third Irish hour after that, where the models
  * themselves step three-hourly and an hourly row would only be interpolation.
  */
 export function rowHours(
@@ -383,8 +384,8 @@ export function rowHours(
   now: number,
   hourlyAhead = HOURLY_AHEAD_HOURS,
 ): { hour: ForecastHour; time: number; step: number }[] {
-  const start = Math.floor(now / HOUR) * HOUR;
-  const fine = start + hourlyAhead * HOUR;
+  const start = dublinMidnight(dublinDate(now));
+  const fine = Math.floor(now / HOUR) * HOUR + hourlyAhead * HOUR;
   return hours.flatMap((hour) => {
     const time = Date.parse(hour.time);
     if (time < start) return [];

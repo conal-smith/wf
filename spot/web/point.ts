@@ -35,8 +35,7 @@ import {
   type Window,
 } from "../../mcp/api/forecast";
 import type { ForecastSource } from "../../mcp/api/httpSource";
-
-const HOUR = 3600000;
+import { dublinDate, dublinMidnight } from "./spot";
 
 /** How many of the riding places nearest a point its page lists. */
 export const POINT_NEARBY = 6;
@@ -295,12 +294,12 @@ export async function pointForecast(
       now: options.now,
       from,
     }),
-    // Only the hours the page draws: from the top of this hour on.
+    // Only the hours the page draws: from today's Irish midnight on.
     readRuns(
       lat,
       lon,
       leadModels(from),
-      Math.max(window.from, Math.floor(options.now / HOUR) * HOUR),
+      Math.max(window.from, dublinMidnight(dublinDate(options.now))),
       window.to,
       options.signal,
     ),

@@ -217,18 +217,21 @@ describe("rows", () => {
   const now = Date.parse("2026-10-09T10:20:00Z");
   const hours = Array.from({ length: 24 * 5 }, (_, i) =>
     hour(
-      new Date(Date.parse("2026-10-09T00:00:00Z") + i * HOUR).toISOString(),
+      new Date(Date.parse("2026-10-08T23:00:00Z") + i * HOUR).toISOString(),
       14,
     ),
   );
 
-  it("starts at the current hour, hourly for three days then three-hourly", () => {
+  it("starts at today's Irish midnight, hourly for three days from now then three-hourly", () => {
     const rows = rowHours(hours, now);
+    // 00:00 in Ireland, on summer time.
     expect(new Date(rows[0].time).toISOString()).toBe(
-      "2026-10-09T10:00:00.000Z",
+      "2026-10-08T23:00:00.000Z",
     );
     const fine = rows.filter((row) => row.step === 1);
-    expect(fine).toHaveLength(72);
+    // 00:00 to 10:00 Irish time today, then the 72 hours from now.
+    expect(fine.at(-1)!.time).toBe(Date.parse("2026-10-12T09:00:00Z"));
+    expect(fine).toHaveLength(72 + 11);
     const coarse = rows.filter((row) => row.step === 3);
     expect(coarse.length).toBeGreaterThan(0);
     // Every coarse row sits on an Irish hour divisible by three.
@@ -319,10 +322,7 @@ describe("Met Éireann warnings on the rows", () => {
 
 describe("bathing water notices on the rows", () => {
   const now = Date.parse("2026-10-09T06:00:00Z");
-  const watered = (
-    iso: string,
-    replaces: boolean | null,
-  ): ForecastHour => ({
+  const watered = (iso: string, replaces: boolean | null): ForecastHour => ({
     ...hour(iso, 16, true, 225),
     ...(replaces !== null && {
       water: { ids: [replaces ? "ban" : "may"], replaces_rating: replaces },
@@ -681,7 +681,13 @@ describe("nextStarWindow", () => {
     }) as unknown as SpotRow;
 
   it("is the first stretch with three stars or more, past a lesser one", () => {
-    const rows = [row(0, 1), row(1, 0), row(2, 3, 14), row(3, 4, 18), row(4, 0)];
+    const rows = [
+      row(0, 1),
+      row(1, 0),
+      row(2, 3, 14),
+      row(3, 4, 18),
+      row(4, 0),
+    ];
     expect(nextStarWindow(rows, T)).toEqual({
       from: T + 2 * H,
       to: T + 4 * H,

@@ -2006,8 +2006,8 @@ function Graph({
       ? // The hour the address opens on, else now, under the playhead.
         Math.max(0, leftFor(opened ? mid(opened) : X(now)))
       : // The hour the address opens on, a third of the way in, as the
-        // hours before it are worth a glance; else now, an hour in, as the
-        // rows start from the hour now and little is drawn before it.
+        // hours before it are worth a glance; else now, an hour in: the
+        // morning is a scroll back.
         Math.max(0, opened ? X(opened.time) - width / 3 : X(now) - px);
     for (const el of scrollers()) el.scrollLeft = left;
     // eslint-disable-next-line react-hooks/exhaustive-deps
