@@ -14,6 +14,7 @@
  * by a station beside it.
  */
 import * as maplibregl from "maplibre-gl";
+import { arrowSvg, createMapCard, part } from "./mapCard";
 import { speedShort, speedWords, unitLabel, type Units } from "./units";
 import { compass } from "./weather";
 import {
@@ -26,10 +27,6 @@ import {
   type WindReading,
   type WindStation,
 } from "./windObs";
-
-const SVG = "http://www.w3.org/2000/svg";
-/** The arrow, pointing up (downwind once turned), in a 12-unit box. */
-const ARROW = "M0 4.6V-4.4M-2.7 -1.6L0 -4.8L2.7 -1.6";
 
 export interface ReadingPills {
   /** Draw these stations' latest readings at `now`, or none (null). */
@@ -96,109 +93,46 @@ export function createReadingPills(map: maplibregl.Map): ReadingPills {
   let units: Units = "kn";
   let now = Date.now();
   /** The card, made once and moved to whichever pill it is about. */
-  const card = document.createElement("div");
-  card.className = "obs-card";
-  card.setAttribute("role", "tooltip");
-  card.id = `obs-card-${Math.random().toString(36).slice(2, 8)}`;
-  card.hidden = true;
-  map.getContainer().append(card);
-  /** The pill the card is about, and whether a tap (not a hover) opened it. */
-  let open: Pill | null = null;
-  let pinned = false;
-
-  const fill = (pill: Pill) => {
+  const card = createMapCard<Pill>(map, "obs-card", (pill, el) => {
     const r = pill.reading;
     if (!r) return;
     const { speed, gust } = readingFigures(r, units);
     const unit = units === "bft" ? "" : ` ${unitLabel(units)}`;
     const stale = isStale(r, now);
-    card.replaceChildren();
-    const add = (tag: string, className: string, text = "") => {
-      const el = document.createElement(tag);
-      el.className = className;
-      el.textContent = text;
-      return el;
-    };
-    const head = add("div", "obs-card-head");
+    el.replaceChildren();
+    const head = part("div", "map-card-head");
     head.append(
-      add("b", "obs-card-name", pill.station.name),
-      add(
+      part("b", "map-card-name", pill.station.name),
+      part(
         "span",
-        "obs-card-net",
+        "map-card-net",
         `${NETWORK_NAME[pill.station.network]} · ${stationKind(pill.station)}`,
       ),
     );
-    const figures = add("div", "obs-card-wind");
-    const arrow = arrowSvg(r.from);
+    const figures = part("div", "map-card-wind");
     figures.append(
-      arrow.svg,
-      add("b", "obs-card-speed", speed),
-      ...(gust ? [add("span", "obs-card-gust", `g${gust}`)] : []),
-      add("span", "obs-card-unit", unit.trim()),
+      arrowSvg(r.from).svg,
+      part("b", "map-card-speed", speed),
+      ...(gust ? [part("span", "map-card-gust", `g${gust}`)] : []),
+      part("span", "map-card-unit", unit.trim()),
       ...(r.from === null
         ? []
-        : [add("span", "obs-card-from", compass(r.from))]),
+        : [part("span", "map-card-from", compass(r.from))]),
     );
-    card.append(
+    el.append(
       head,
       figures,
-      add(
+      part(
         "div",
-        `obs-card-when${stale ? " is-stale" : ""}`,
+        `map-card-when${stale ? " is-stale" : ""}`,
         `Measured ${measuredAt(r.time)}${stale ? ", over 3 hours ago" : ""}`,
       ),
-      add("div", "obs-card-credit", OBS_CREDIT[pill.station.network]),
+      part("div", "map-card-credit", OBS_CREDIT[pill.station.network]),
     );
-  };
-
-  /** The card beside its pill: above it, or below where there is no room. */
-  const place = () => {
-    if (!open || card.hidden) return;
-    const frame = map.getContainer().getBoundingClientRect();
-    const r = open.button.getBoundingClientRect();
-    const w = card.offsetWidth;
-    const h = card.offsetHeight;
-    const cx = r.left + r.width / 2 - frame.left;
-    const left = Math.max(8, Math.min(frame.width - w - 8, cx - w / 2));
-    const above = r.top - frame.top - h - 8;
-    const top = above >= 8 ? above : r.bottom - frame.top + 8;
-    card.style.transform = `translate(${Math.round(left)}px, ${Math.round(top)}px)`;
-  };
-
+  });
   const show = (pill: Pill, tap: boolean) => {
-    if (!pill.reading) return;
-    if (open && open !== pill) open.button.removeAttribute("aria-describedby");
-    open = pill;
-    pinned = tap;
-    fill(pill);
-    card.hidden = false;
-    pill.button.setAttribute("aria-describedby", card.id);
-    pill.el.classList.add("is-open");
-    for (const other of pills.values())
-      if (other !== pill) other.el.classList.remove("is-open");
-    place();
+    if (pill.reading) card.show(pill, tap);
   };
-  const hide = () => {
-    if (!open) return;
-    open.button.removeAttribute("aria-describedby");
-    open.el.classList.remove("is-open");
-    open = null;
-    pinned = false;
-    card.hidden = true;
-  };
-
-  // A tap anywhere else lets go of a card a tap opened; so does a move.
-  const away = (event: PointerEvent) => {
-    if (!pinned || !open) return;
-    if (open.el.contains(event.target as Node)) return;
-    hide();
-  };
-  window.addEventListener("pointerdown", away, true);
-  const onKey = (event: KeyboardEvent) => {
-    if (event.key === "Escape" && open) hide();
-  };
-  window.addEventListener("keydown", onKey);
-  map.on("move", place);
 
   const make = (station: WindStation): Pill => {
     const el = document.createElement("div");
@@ -227,21 +161,21 @@ export function createReadingPills(map: maplibregl.Map): ReadingPills {
       key: "",
     };
     button.addEventListener("pointerenter", (event) => {
-      if (event.pointerType === "mouse" && !pinned) show(pill, false);
+      if (event.pointerType === "mouse" && !card.pinned) show(pill, false);
     });
     button.addEventListener("pointerleave", (event) => {
-      if (event.pointerType === "mouse" && !pinned) hide();
+      if (event.pointerType === "mouse" && !card.pinned) card.hide();
     });
     button.addEventListener("focus", () => {
-      if (!pinned) show(pill, false);
+      if (!card.pinned) show(pill, false);
     });
     button.addEventListener("blur", () => {
-      if (!pinned) hide();
+      if (!card.pinned) card.hide();
     });
     button.addEventListener("click", (event) => {
       // Not the map's own: a tap here reads no point's forecast.
       event.stopPropagation();
-      if (open === pill && pinned) hide();
+      if (card.open === pill && card.pinned) card.hide();
       else show(pill, true);
     });
     button.addEventListener("mousedown", (event) => event.preventDefault());
@@ -286,40 +220,20 @@ export function createReadingPills(map: maplibregl.Map): ReadingPills {
           "aria-label",
           readingWords(station, r, units, now),
         );
-        if (open === pill) fill(pill);
+        if (card.open === pill) show(pill, card.pinned);
       }
       for (const [id, pill] of pills) {
         if (want.has(id)) continue;
-        if (open === pill) hide();
+        if (card.open === pill) card.hide();
         pill.marker.remove();
         pills.delete(id);
       }
-      place();
+      card.place();
     },
     destroy() {
-      hide();
-      window.removeEventListener("pointerdown", away, true);
-      window.removeEventListener("keydown", onKey);
-      map.off("move", place);
+      card.destroy();
       for (const pill of pills.values()) pill.marker.remove();
       pills.clear();
-      card.remove();
     },
   };
-}
-
-/** A small arrow blowing downwind, turned from `from` (none for null). */
-function arrowSvg(from: number | null) {
-  const svg = document.createElementNS(SVG, "svg");
-  svg.setAttribute("viewBox", "-6 -6 12 12");
-  svg.setAttribute("aria-hidden", "true");
-  svg.setAttribute("class", "obs-arrow");
-  const turn = document.createElementNS(SVG, "g");
-  const path = document.createElementNS(SVG, "path");
-  path.setAttribute("d", ARROW);
-  turn.append(path);
-  svg.append(turn);
-  if (from === null) svg.style.display = "none";
-  else turn.setAttribute("transform", `rotate(${Math.round(from + 180)})`);
-  return { svg, turn };
 }

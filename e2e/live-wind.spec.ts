@@ -123,24 +123,24 @@ test.describe("beside the list", () => {
     await expect(card(page)).toBeHidden();
     await pill.hover();
     await expect(card(page)).toBeVisible();
-    await expect(card(page).locator(".obs-card-name")).toHaveText("Mace Head");
-    await expect(card(page).locator(".obs-card-net")).toHaveText(
+    await expect(card(page).locator(".map-card-name")).toHaveText("Mace Head");
+    await expect(card(page).locator(".map-card-net")).toHaveText(
       "Met Éireann · Weather station",
     );
-    await expect(card(page).locator(".obs-card-speed")).toHaveText(
+    await expect(card(page).locator(".map-card-speed")).toHaveText(
       kn(mace.speed),
     );
-    await expect(card(page).locator(".obs-card-gust")).toHaveText(
+    await expect(card(page).locator(".map-card-gust")).toHaveText(
       `g${kn(mace.gust)}`,
     );
-    await expect(card(page).locator(".obs-card-unit")).toHaveText("kn");
-    await expect(card(page).locator(".obs-card-from")).toHaveText(
+    await expect(card(page).locator(".map-card-unit")).toHaveText("kn");
+    await expect(card(page).locator(".map-card-from")).toHaveText(
       /^[NESW]{1,3}$/,
     );
-    await expect(card(page).locator(".obs-card-when")).toHaveText(
+    await expect(card(page).locator(".map-card-when")).toHaveText(
       "Measured 22:00",
     );
-    await expect(card(page).locator(".obs-card-credit")).toHaveText(
+    await expect(card(page).locator(".map-card-credit")).toHaveText(
       "Contains Met Éireann data, CC BY 4.0",
     );
     await expect(pill).toHaveAttribute(
@@ -158,17 +158,17 @@ test.describe("beside the list", () => {
 
     // A buoy's card credits the Marine Institute; the keys open it too.
     await reading(page, "MI_M2").focus();
-    await expect(card(page).locator(".obs-card-net")).toHaveText(
+    await expect(card(page).locator(".map-card-net")).toHaveText(
       "Marine Institute · Weather buoy",
     );
-    await expect(card(page).locator(".obs-card-credit")).toHaveText(
+    await expect(card(page).locator(".map-card-credit")).toHaveText(
       "Weather buoy data © Marine Institute, CC BY 4.0",
     );
     await reading(page, "MI_M6").focus();
-    await expect(card(page).locator(".obs-card-name")).toHaveText(
+    await expect(card(page).locator(".map-card-name")).toHaveText(
       "M6 Atlantic buoy",
     );
-    await expect(card(page).locator(".obs-card-when")).toHaveText(
+    await expect(card(page).locator(".map-card-when")).toHaveText(
       "Measured 17:00, over 3 hours ago",
     );
     await page.keyboard.press("Escape");
@@ -230,7 +230,7 @@ test.describe("on a phone", () => {
     const pill = reading(page, "ME_03963");
     await pill.tap();
     await expect(card(page)).toBeVisible();
-    await expect(card(page).locator(".obs-card-name")).toHaveText("Mace Head");
+    await expect(card(page).locator(".map-card-name")).toHaveText("Mace Head");
     // Inside the screen.
     const c = (await card(page).boundingBox())!;
     expect(c.x).toBeGreaterThanOrEqual(0);
