@@ -764,7 +764,7 @@ test("under the week graph: the wind blend, the gusts, the waves, the current an
   const box = (await page.locator("[data-spot-graph]").boundingBox())!;
   await page.mouse.move(box.x + box.width * 0.6, box.y + 80);
   await expect(readout.locator("[data-readout-gust]")).toContainText(
-    /^Gusts\d\.\d×$/,
+    /^Gust factor\d\.\d×$/,
   );
   expect(errors).toEqual([]);
 });
@@ -791,7 +791,7 @@ test("Table adds the gust factor, the wave period and the rain", async ({
   await page.locator("[data-day-card]").nth(1).click();
   await page.getByRole("button", { name: "Table", exact: true }).click();
   const table = page.locator("[data-hour-table]");
-  await expect(table.locator("thead")).toContainText("Gusts");
+  await expect(table.locator("thead")).toContainText("Gust factor");
   await expect(table.locator("thead")).toContainText("Period");
   await expect(table.locator("thead")).toContainText("Rain mm/h");
   await expect(table.locator("[data-gust-cell]").first()).toHaveText(
@@ -1198,7 +1198,7 @@ test.describe("on a phone, the week graph", () => {
       "Wind",
       "Direction",
       "Wind blend",
-      "Gusts",
+      "Gust factor",
       "Sky",
       "Rain",
       "Tide",
