@@ -1625,11 +1625,30 @@ export default function App() {
     const to = panelRef.current;
     if (!splitRef.current || !el || !map || !to) return setPage("finder");
     // The map's own pixels start under the bar.
-    const middle = map.unproject([
-      to.left + to.width / 2,
-      to.top - barBottom() + to.height / 2,
-    ]);
+    const panelMiddle = {
+      x: to.left + to.width / 2,
+      y: to.top - barBottom() + to.height / 2,
+    };
+    const middle = map.unproject([panelMiddle.x, panelMiddle.y]);
     backTo.current = { lng: middle.lng, lat: middle.lat };
+    // Nearby's map is not fitted again, so opening is undone: the full chart's
+    // middle glides to the panel's middle as the box shrinks round it, and a
+    // trip out and back leaves the map, and so the list, where they were.
+    if (listFollows && finderScopeRef.current === "near") {
+      const { lng, lat } = map.getCenter();
+      backTo.current = { lng, lat };
+      if (!motionRef.current) {
+        const at = map.project([lng, lat]);
+        map.easeTo({
+          center: map.unproject([
+            2 * at.x - panelMiddle.x,
+            2 * at.y - panelMiddle.y,
+          ]),
+          duration: OPEN_MS,
+          easing: (t) => 1 - (1 - t) ** 3,
+        });
+      }
+    }
     if (motionRef.current || !el.animate) return setPage("finder");
     const shrink = el.animate(
       [
