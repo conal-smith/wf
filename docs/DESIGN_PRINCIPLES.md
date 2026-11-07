@@ -963,3 +963,11 @@ glow: "It's only meant to show essentially the really shallow parts of the
 water, so it should only be a very subtle little glow around the coastline until
 you zoom in and then you see the real data." It is drawn on the shallows and
 reaches a few hundred metres past them, not out over the sea.
+
+**2026-11-07 — The spot page keeps today whole, and the finder's map opens round
+the rider.** The ruling of 2026-10-25 reaches the spot page: its graph and table
+start at Irish midnight, and it still opens on the hour now. It reads the
+models' own runs, so a morning hour can differ from the chart's, which carries
+the finest run forward in the blend. With the rider's place known, Near you's
+map opens round them at `FOIL_FULL_ZOOM`, where the tidal depth is at full
+strength, not fitted to every spot within 30 km.

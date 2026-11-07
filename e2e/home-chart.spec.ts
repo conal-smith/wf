@@ -368,8 +368,20 @@ test.describe("a first visit, with no favourites", () => {
     expect(listed).toBeGreaterThan(3);
     await expect(lights(page)).toHaveCount(listed, { timeout: 30000 });
     await expect(page.getByRole("img", { name: "You are here" })).toBeVisible();
-    // Fitted to the list: every light inside the box beside it.
-    await expect.poll(() => lightsInside(page)).toBe(listed);
+    // Opened round the rider, closer in than the list: their mark in the
+    // middle of the box beside it, and the spots further out a pan away.
+    const box = (await panel(page).boundingBox())!;
+    await expect
+      .poll(async () => {
+        const you = await page
+          .getByRole("img", { name: "You are here" })
+          .boundingBox();
+        return you
+          ? Math.abs(you.x + you.width / 2 - (box.x + box.width / 2))
+          : Infinity;
+      })
+      .toBeLessThan(box.width / 3);
+    await expect.poll(() => lightsInside(page)).toBeLessThan(listed);
   });
 
   test("location refused: Nearby lists the spots nearest the middle of Ireland, and the chart beside it is fitted to them", async ({

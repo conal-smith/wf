@@ -37,6 +37,7 @@ import {
   areaAt,
   areasAt,
   areasInView,
+  FOIL_FULL_ZOOM,
   FOIL_MIN_ZOOM,
   FOIL_ZOOM_NOTE,
   foilColours,
@@ -1774,7 +1775,9 @@ export default function App() {
   /**
    * The chart beside the list is fitted to the places on it as it first
    * shows them, and again when the list changes between Favourites and Near
-   * you, or the rider's place comes in: never on a hover.
+   * you, or the rider's place comes in: never on a hover. Near you, with the
+   * rider's place, it opens round them instead, at the zoom their own coast's
+   * tidal depth is at full strength; the spots further out are a pan away.
    */
   const fitKey = `${finderScope}|${riderAt ? "rider" : ""}`;
   const fitted = useRef<string | null>(null);
@@ -1782,11 +1785,20 @@ export default function App() {
     const map = controls.current?.map;
     const bounds = spotsBounds(listedSpots);
     if (!map || !bounds) return;
-    map.fitBounds(bounds, {
-      padding: fitPadding,
-      maxZoom: 11,
-      duration: reducedMotion ? 0 : duration,
-    });
+    const round = finderScope === "near" ? riderAt : null;
+    map.fitBounds(
+      round
+        ? [
+            [round.lon, round.lat],
+            [round.lon, round.lat],
+          ]
+        : bounds,
+      {
+        padding: fitPadding,
+        maxZoom: round ? FOIL_FULL_ZOOM : 11,
+        duration: reducedMotion ? 0 : duration,
+      },
+    );
   };
   useEffect(() => {
     if (!mapReady || page !== "finder" || !split || !listedSpots.length) return;
