@@ -13,6 +13,7 @@
  * the chart was left on.
  */
 import { sunTimes } from "../../force5/src/sun";
+import type { ViewBounds } from "../../force5/src/squares";
 import type { Spot } from "../../force5/src/weather";
 import type { PlaceHour } from "../ratings";
 import { irishDate, irishHour, type StripColumn } from "../strip";
@@ -31,6 +32,13 @@ export const NEAR_KM = 30;
  * however far, so the list is never empty. The approved mock-up's count.
  */
 export const NEAREST_COUNT = 12;
+
+/**
+ * The most cards Nearby lists while it follows the map: the best of the spots
+ * in view, whose rest stand on the map as muted dots. A view of the whole of
+ * Ireland is 149 spots, and each card is a loupe and a day's hours.
+ */
+export const MAX_CARDS = 30;
 
 /** Today and the five days after it: the days the finder steps through. */
 export const CARD_DAYS = 6;
@@ -136,6 +144,36 @@ export function listFor<S extends Spot>(
     const spot = byId.get(id);
     return spot ? [{ spot, km: at && own ? distanceKm(at, spot) : null }] : [];
   });
+}
+
+/**
+ * The places inside what the map shows, for Nearby beside it: those nearest
+ * the view's middle first, so among equals the cap keeps what the rider is
+ * looking at. `from` is the rider's own place, which each card measures from;
+ * with none, no card gives a distance. A view past the antimeridian has a west
+ * or an east beyond 180, as MapLibre gives it (`ViewBounds`), so longitudes are
+ * measured round the world from its west edge.
+ */
+export function spotsInView<S extends Spot>(
+  spots: readonly S[],
+  view: ViewBounds,
+  from: LatLon | null,
+): { spot: S; km: number | null }[] {
+  const { west, south, east, north } = view;
+  const width = east - west;
+  if (![west, south, east, north].every(Number.isFinite) || width < 0)
+    return [];
+  const middle = { lat: (south + north) / 2, lon: west + width / 2 };
+  return spots
+    .filter(
+      ({ lat, lon }) =>
+        lat >= south &&
+        lat <= north &&
+        (width >= 360 || (((lon - west) % 360) + 360) % 360 <= width),
+    )
+    .map((spot) => ({ spot, off: distanceKm(middle, spot) }))
+    .sort((a, b) => a.off - b.off)
+    .map(({ spot }) => ({ spot, km: from ? distanceKm(from, spot) : null }));
 }
 
 /* ---- the days ------------------------------------------------------------ */
@@ -425,6 +463,21 @@ export function withStars<S extends Spot>(
 ): Listed<S>[] {
   if (stars <= 0) return [...list];
   return list.filter((item) => item.best.stars >= stars);
+}
+
+/**
+ * The cards a list comes to: those with at least `stars` stars, the best
+ * `cap` of them, in the rider's order. `total` is how many had the stars,
+ * before the cap, which is the count the head of the list says.
+ */
+export function chooseCards<S extends Spot>(
+  list: readonly Listed<S>[],
+  order: Order,
+  stars: number,
+  cap = Infinity,
+): { cards: Listed<S>[]; total: number } {
+  const good = withStars(rankSpots(list), stars);
+  return { cards: orderSpots(good.slice(0, cap), order), total: good.length };
 }
 
 /* ---- the hour picked -------------------------------------------------------- */

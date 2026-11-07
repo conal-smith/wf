@@ -182,6 +182,10 @@ type Props = {
   /** Places whose names stay up at any zoom: the starred ones. */
   named: ReadonlySet<string>;
   lightLabel: (spot: Spot, state: LightState | undefined) => string;
+  /** The hour the lights stand at, in words ("at 13:00 today"), for a dot's card. */
+  lightWhen?: string | null;
+  /** A spot's own page, for the link on a dot's card a tap has pinned. */
+  lightLink?: (spot: Spot) => string;
   selectedId: string | null;
   /** Where the loupe or the range ring is laid (a spot or a tapped point), or null. */
   focus: { lon: number; lat: number } | null;
@@ -1385,6 +1389,7 @@ export default function WindMap(props: Props) {
       (spot) => latest.current.onSelect(spot),
       (spot) => latest.current.onHoverSpot?.(spot),
       (spot) => latest.current.onOpenPage?.(spot),
+      (spot) => latest.current.lightLink?.(spot) ?? "",
     );
     lightsRef.current.light(lit.current);
     return () => {
@@ -1399,8 +1404,18 @@ export default function WindMap(props: Props) {
       named,
       props.lightLabel,
       units,
+      props.lightWhen,
     );
-  }, [ready, spots, lights, selectedId, named, units, props.lightLabel]);
+  }, [
+    ready,
+    spots,
+    lights,
+    selectedId,
+    named,
+    units,
+    props.lightLabel,
+    props.lightWhen,
+  ]);
 
   // The plain map's pills, from the map box's class (src/map.css).
   const plain = !!props.plain;

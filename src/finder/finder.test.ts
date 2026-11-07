@@ -5,9 +5,11 @@ import { clock, irishDate, irishHour, stripColumns } from "../strip";
 import {
   HOUR,
   IRELAND_CENTRE,
+  MAX_CARDS,
   NEAREST_COUNT,
   bestStars,
   cardDates,
+  chooseCards,
   columnsByTime,
   dayLight,
   dayOpening,
@@ -26,6 +28,7 @@ import {
   scopeAddress,
   scopeInAddress,
   shownColumn,
+  spotsInView,
   todayOver,
   todayRow,
   withStars,
@@ -609,5 +612,114 @@ describe("the list's order and its stars", () => {
     expect(ids(withStars(list, 0))).toEqual(["b", "k", "d", "u"]);
     expect(ids(withStars(list, 4))).toEqual(["b", "d"]);
     expect(ids(withStars(list, 5))).toEqual(["b"]);
+  });
+});
+
+describe("the spots in the map's view", () => {
+  const place = (id: string, lat: number, lon: number) =>
+    ({ id, name: id, lat, lon }) as Spot;
+  const dublin = place("dublin", 53.35, -6.26);
+  const galway = place("galway", 53.27, -9.05);
+  const kerry = place("kerry", 52.25, -10.05);
+  const spots = [kerry, galway, dublin];
+  const east = { west: -7, south: 53, east: -5, north: 54 };
+
+  it("keeps the spots inside the view and leaves the rest out", () => {
+    expect(spotsInView(spots, east, null).map((l) => l.spot.id)).toEqual([
+      "dublin",
+    ]);
+    expect(
+      spotsInView(
+        spots,
+        { west: -11, south: 52, east: -8, north: 54 },
+        null,
+      ).map((l) => l.spot.id),
+    ).toHaveLength(2);
+  });
+
+  it("counts a spot on the edge as in view", () => {
+    const edge = { west: -6.26, south: 53.35, east: -6, north: 53.5 };
+    expect(spotsInView(spots, edge, null)).toHaveLength(1);
+  });
+
+  it("is empty over open sea, and for a view that makes no sense", () => {
+    const sea = { west: -20, south: 50, east: -15, north: 52 };
+    expect(spotsInView(spots, sea, null)).toEqual([]);
+    expect(spotsInView(spots, { ...east, west: Number.NaN }, null)).toEqual([]);
+    expect(spotsInView(spots, { ...east, west: 0, east: -1 }, null)).toEqual(
+      [],
+    );
+  });
+
+  it("gives the nearest the view's middle first", () => {
+    const all = { west: -11, south: 52, east: -5, north: 54 };
+    const middling = place("middling", 53, -8);
+    expect(spotsInView([kerry, dublin, middling], all, null)[0].spot.id).toBe(
+      "middling",
+    );
+  });
+
+  it("gives a distance only from the rider's own place", () => {
+    expect(spotsInView(spots, east, null)[0].km).toBeNull();
+    expect(spotsInView(spots, east, dublin)[0].km).toBe(0);
+    expect(spotsInView(spots, east, galway)[0].km).toBeCloseTo(
+      distanceKm(galway, dublin),
+    );
+  });
+
+  it("reads a view past the antimeridian, as MapLibre gives it", () => {
+    const fiji = place("fiji", -17, 179);
+    const samoa = place("samoa", -14, -172);
+    const tonga = place("tonga", -21, -175);
+    const pacific = { west: 170, south: -25, east: 190, north: -10 };
+    expect(
+      spotsInView([fiji, samoa, tonga, dublin], pacific, null)
+        .map((l) => l.spot.id)
+        .sort(),
+    ).toEqual(["fiji", "samoa", "tonga"]);
+    // And more than one copy of the world.
+    expect(
+      spotsInView(spots, { west: -400, south: 0, east: 400, north: 60 }, null),
+    ).toHaveLength(3);
+  });
+});
+
+describe("the cards a list comes to", () => {
+  const listed = (count: number): Listed[] =>
+    Array.from({ length: count }, (_, at) => ({
+      spot: {
+        id: `s${at}`,
+        name: `Spot ${count - at}`,
+        lat: 53,
+        lon: -8,
+      } as Spot,
+      km: at,
+      best: { stars: at % 5, day: 0 },
+    }));
+
+  it("keeps the best up to the cap, and says how many there were", () => {
+    const { cards, total } = chooseCards(listed(160), "best", 0, MAX_CARDS);
+    expect(cards).toHaveLength(30);
+    expect(total).toBe(160);
+    expect(cards.every((card) => card.best.stars === 4)).toBe(true);
+  });
+
+  it("has no cap unless it is given one", () => {
+    expect(chooseCards(listed(149), "best", 0).cards).toHaveLength(149);
+  });
+
+  it("counts the spots with the stars asked for, not every one", () => {
+    const { cards, total } = chooseCards(listed(160), "best", 4, MAX_CARDS);
+    expect(total).toBe(32);
+    expect(cards).toHaveLength(30);
+  });
+
+  it("puts the best in the rider's order, not the first by name", () => {
+    const { cards } = chooseCards(listed(160), "name", 0, MAX_CARDS);
+    expect(cards.every((card) => card.best.stars === 4)).toBe(true);
+    const names = cards.map((card) => card.spot.name);
+    expect(names).toEqual(
+      [...names].sort((a, b) => a.localeCompare(b, "en-IE")),
+    );
   });
 });

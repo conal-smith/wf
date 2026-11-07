@@ -39,6 +39,14 @@
  * hover, click, the lit light and the hour it follows are the ring's; only
  * the stylesheet, and the canvas's picture of it, tell the two apart.
  *
+ * There, a spot that is not on the list is a small muted dot instead
+ * (`unlisted`, `lt-dot` in src/map.css). A dot stands under everything, thins
+ * no pill and moves no name, and a press on a pill never picks a dot. It has no
+ * card of its own in the list, so hovering it does not light one: it opens a
+ * small card of its own over the map (./mapCard.ts), with the wind there. A
+ * mouse or the keys open it, a press goes to the place (`onSelect`), and a tap
+ * pins the card, which holds the link.
+ *
  * To the keys the lights are one stop (a roving tab stop, as the layers'
  * rail is): Tab comes to one light, the open spot's or the last the keys
  * were on, else the first in view; the arrows go to the nearest light that
@@ -47,10 +55,17 @@
  * and fifty presses of Tab (#222).
  */
 import type * as maplibregl from "maplibre-gl";
-import { nearestLight, nextLight, thinLights, type Way } from "./lightHit";
+import {
+  nextLight,
+  pressedLight,
+  tappedLight,
+  thinLights,
+  type Way,
+} from "./lightHit";
 import { drawLights, lookOf, type Drawn, type Look } from "./lightsCanvas";
+import { arrowSvg, createMapCard, part } from "./mapCard";
 import type { Wedge } from "./rideWedge";
-import { speedShort, type Units } from "./units";
+import { speedShort, unitLabel, type Units } from "./units";
 import type { Spot } from "./weather";
 
 export interface LightState {
@@ -69,10 +84,49 @@ export interface LightState {
   mark: "struck" | "cross-off" | null;
   /** The headings the rider can hold out to sea, or null. */
   wedge: Wedge | null;
+  /** On the plain map, a spot that is not on the list: a muted dot. */
+  unlisted?: boolean;
+}
+
+/**
+ * What a dot's card says of a place's wind and stars, at the hour `when`
+ * ("at 13:00 today"). Under a knot it is calm, which is the point of looking:
+ * no figure, no arrow.
+ */
+export function dotWords(
+  s: LightState | undefined,
+  when: string | null,
+  units: Units,
+) {
+  if (!s || s.pending)
+    return { calm: false, speed: null, gust: null, line: "Not read yet" };
+  const at = when ? ` ${when}` : "";
+  if (s.windKn === null)
+    return {
+      calm: false,
+      speed: null,
+      gust: null,
+      line: "No forecast at this hour",
+    };
+  const stars =
+    s.dark || s.stars === null
+      ? "Dark"
+      : s.mark === "struck"
+        ? "Offshore"
+        : `${s.stars} star${s.stars === 1 ? "" : "s"}${s.mark === "cross-off" ? ", cross-offshore" : ""}`;
+  return {
+    calm: s.windKn < 1,
+    speed: speedShort(s.windKn, units),
+    gust: s.gustKn == null ? null : speedShort(s.gustKn, units),
+    line: `${stars}${at}`,
+  };
 }
 
 interface Entry {
+  spot: Spot;
   el: HTMLButtonElement;
+  /** The light's button again, as a card over the map wants it. */
+  button: HTMLButtonElement;
   lngLat: [number, number];
   /** Where it stood on the screen as the camera last rested. */
   x: number;
@@ -114,6 +168,7 @@ const MANAGED = [
   "named",
   "w-over",
   "lt-thin",
+  "lt-dot",
 ];
 
 /** What a full mark takes on the chart from the national zoom, a little clear. */
@@ -123,6 +178,9 @@ const PILL_MARGIN = 3;
 
 /** How long a frame of a move may spend making the lights' pictures. */
 const BUDGET_MS = 4;
+
+/** How near a tap through a move must fall to a muted dot, in pixels. */
+const DOT_REACH = 10;
 
 /** The base map's own names, which a light's name should not print over. */
 const PLACE_LAYERS = ["places", "places-near", "water-names"];
@@ -142,6 +200,9 @@ interface Box {
   right: number;
   bottom: number;
 }
+/** A muted dot (src/map.css), not a pill or a ring. */
+const isDot = (el: HTMLElement) => el.classList.contains("lt-dot");
+
 const overlaps = (a: Box, b: Box, pad = 1) =>
   a.left < b.right + pad &&
   b.left < a.right + pad &&
@@ -176,6 +237,8 @@ export interface Lights {
     named: ReadonlySet<string>,
     label: (spot: Spot, state: LightState | undefined) => string,
     units: Units,
+    /** The hour the lights stand at, in words ("at 13:00 today"), for a dot's card. */
+    when?: string | null,
   ): void;
   element(id: string): HTMLButtonElement | undefined;
   /**
@@ -200,6 +263,8 @@ export function createLights(
   onHover?: (spot: Spot | null) => void,
   /** The chosen light's name is pressed: its place's own page. */
   onOpen?: (spot: Spot) => void,
+  /** A place's own page, for the link on a card a tap has pinned. */
+  link?: (spot: Spot) => string,
 ): Lights {
   const entries = new Map<string, Entry>();
   /**
@@ -246,9 +311,10 @@ export function createLights(
     const pills = box.contains("is-plain");
     if (pills || box.contains("z-lo")) {
       const crowd = [...entries]
-        .filter(
-          ([, { el }]) =>
-            pills || el.matches(".s1, .s2, .s3, .s4, .s5, .sel, .lit"),
+        .filter(([, { el }]) =>
+          pills
+            ? !isDot(el)
+            : el.matches(".s1, .s2, .s3, .s4, .s5, .sel, .lit"),
         )
         .map(([id, { el, x, y }]) => {
           const r = pills ? el.getBoundingClientRect() : null;
@@ -266,6 +332,8 @@ export function createLights(
         entries.get(id)?.el.classList.add("lt-thin");
     }
     for (const { el } of entries.values()) {
+      // A dot stands under the names, and is no reason to move one.
+      if (isDot(el)) continue;
       const r = el.getBoundingClientRect();
       if (
         r.right < frame.left ||
@@ -359,16 +427,29 @@ export function createLights(
   /**
    * The spot a click on `el` meant: from a pointer, the nearest light within
    * a button's reach of it (./lightHit), since the reaches of close lights
-   * overlap; from a key, the light's own.
+   * overlap; from a key, the light's own. A press on a pill is never a dot's,
+   * however near one stands to the pill's end, nor one on a dot a pill's (a
+   * pill stands over a dot, so a press that reached one missed the pills).
    */
   const meant = (spot: Spot, el: HTMLElement, event: MouseEvent): Spot => {
     if (!event.detail) return spot;
     const reach = parseFloat(getComputedStyle(el, "::before").width) / 2 || 22;
     const centres = [...entries].map(([id, entry]) => {
       const r = entry.el.getBoundingClientRect();
-      return { id, x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      return {
+        id,
+        x: r.left + r.width / 2,
+        y: r.top + r.height / 2,
+        dot: isDot(entry.el),
+      };
     });
-    const id = nearestLight(centres, event.clientX, event.clientY, reach);
+    const id = pressedLight(
+      centres,
+      event.clientX,
+      event.clientY,
+      reach,
+      isDot(el),
+    );
     return (id && byId.get(id)) || spot;
   };
   // The lights' common parent: no box of its own (display: contents), so each
@@ -402,6 +483,7 @@ export function createLights(
     el.classList.contains("sel") ||
     el.classList.contains("lit") ||
     el.classList.contains("gust-highlight") ||
+    el.classList.contains("is-open") ||
     el === document.activeElement ||
     el.matches(":hover") ||
     pulse.style.display !== "none";
@@ -448,7 +530,8 @@ export function createLights(
     return out;
   };
   /**
-   * What the canvas draws, in the order the buttons stack: the named on top.
+   * What the canvas draws, in the order the buttons stack: the dots under
+   * everything, the named on top.
    * Through a move, a few milliseconds of new pictures a frame: a zoom in to
    * where every light's name shows makes a picture of each.
    */
@@ -465,9 +548,12 @@ export function createLights(
     }
     const named = (e: Entry) => e.el.classList.contains("named");
     const all = [...looks.keys()];
-    drawn = [...all.filter((e) => !named(e)), ...all.filter(named)].map(
-      (e) => ({ x: e.x, y: e.y, look: looks.get(e)! }),
-    );
+    const marks = all.filter((e) => !isDot(e.el));
+    drawn = [
+      ...all.filter((e) => isDot(e.el)),
+      ...marks.filter((e) => !named(e)),
+      ...marks.filter(named),
+    ].map((e) => ({ x: e.x, y: e.y, look: looks.get(e)! }));
   };
   /** Each light at its place on the screen, with the camera at rest. */
   const place = () => {
@@ -487,7 +573,7 @@ export function createLights(
   /**
    * The one light Tab stops on: the one the keys are on, else the open
    * spot's, else the last the keys were on, while each is in view; else the
-   * first in view, else the first.
+   * first in view, else the first; a dot only with no other mark in view.
    */
   let stop: Entry | undefined;
   const rove = (to?: Entry) => {
@@ -496,8 +582,9 @@ export function createLights(
       to ??
       all.find((entry) => entry.el === document.activeElement) ??
       [all.find((entry) => entry.el.classList.contains("sel")), stop].find(
-        (entry) => entry && inView(entry),
+        (entry) => entry && inView(entry) && !isDot(entry.el),
       ) ??
+      all.find((entry) => inView(entry) && !isDot(entry.el)) ??
       all.find(inView) ??
       all[0];
     if (next === stop) return;
@@ -604,6 +691,23 @@ export function createLights(
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.clearRect(0, 0, canvas.width, canvas.height);
   };
+  /** Whether the last press was a finger's, which a dot's card waits for. */
+  let touched = false;
+  const onPress = (event: PointerEvent) => {
+    touched = event.pointerType !== "mouse";
+  };
+  window.addEventListener("pointerdown", onPress, true);
+  /**
+   * A light pressed: its place, but for a dot under a finger, which has no
+   * hover to show its card: the first tap pins the card, with the link.
+   */
+  const press = (spot: Spot, pointer: boolean) => {
+    const entry = entries.get(spot.id);
+    if (!entry || !pointer || !touched || !isDot(entry.el))
+      return onSelect(spot);
+    if (card.open === entry && card.pinned) card.hide();
+    else card.show(entry, true);
+  };
   for (const spot of spots) {
     const el = document.createElement("button");
     el.type = "button";
@@ -613,33 +717,10 @@ export function createLights(
     el.tabIndex = -1;
     el.innerHTML = `<span class="lt-pulse" aria-hidden="true"><svg class="lt-wedge" viewBox="-30 -30 60 60"><path/></svg></span>${LIGHT_SVG}${PILL_HTML}<span class="lt-lab" aria-hidden="true"><b></b><i></i></span>`;
     el.querySelector(".lt-lab b")!.textContent = spot.name;
-    el.addEventListener("click", (event) => {
-      event.stopPropagation();
-      // The name beside the chosen light is the way to its page: the scrub
-      // bar under the chart has no name or link of its own.
-      if (
-        onOpen &&
-        el.classList.contains("sel") &&
-        (event.target as Element).closest?.(".lt-lab")
-      )
-        return onOpen(spot);
-      onSelect(meant(spot, el, event));
-    });
-    // As MapLibre's markers do: a press on a light neither drags it as an
-    // image nor moves the focus.
-    if (onHover) {
-      el.addEventListener("pointerenter", (event) => {
-        if (event.pointerType === "mouse") onHover(spot);
-      });
-      el.addEventListener("pointerleave", (event) => {
-        if (event.pointerType === "mouse") onHover(null);
-      });
-    }
-    el.addEventListener("dragstart", (event) => event.preventDefault());
-    el.addEventListener("mousedown", (event) => event.preventDefault());
-    layer.appendChild(el);
-    entries.set(spot.id, {
+    const entry: Entry = {
+      spot,
       el,
+      button: el,
       lngLat: [spot.lon, spot.lat],
       x: 0,
       y: 0,
@@ -654,7 +735,43 @@ export function createLights(
       pillWind: el.querySelector<HTMLElement>(".lt-kn")!,
       pillGust: el.querySelector<HTMLElement>(".lt-gu")!,
       key: "",
+    };
+    el.addEventListener("click", (event) => {
+      event.stopPropagation();
+      // The name beside the chosen light is the way to its page: the scrub
+      // bar under the chart has no name or link of its own.
+      if (
+        onOpen &&
+        el.classList.contains("sel") &&
+        (event.target as Element).closest?.(".lt-lab")
+      )
+        return onOpen(spot);
+      press(meant(spot, el, event), event.detail > 0);
     });
+    // A dot under the mouse opens its card, and lights nothing: `lit` is for
+    // a spot on the list, and would fade every other mark.
+    el.addEventListener("pointerenter", (event) => {
+      if (event.pointerType !== "mouse") return;
+      if (!isDot(el)) onHover?.(spot);
+      else if (!card.pinned) card.show(entry, false);
+    });
+    el.addEventListener("pointerleave", (event) => {
+      if (event.pointerType !== "mouse") return;
+      onHover?.(null);
+      if (card.open === entry && !card.pinned) card.hide();
+    });
+    el.addEventListener("focus", () => {
+      if (isDot(el) && !card.pinned) card.show(entry, false);
+    });
+    el.addEventListener("blur", () => {
+      if (card.open === entry && !card.pinned) card.hide();
+    });
+    // As MapLibre's markers do: a press on a light neither drags it as an
+    // image nor moves the focus.
+    el.addEventListener("dragstart", (event) => event.preventDefault());
+    el.addEventListener("mousedown", (event) => event.preventDefault());
+    layer.appendChild(el);
+    entries.set(spot.id, entry);
   }
   // Through a move the buttons are out of reach (src/map.css): a tap on a
   // light as it is drawn chooses it all the same, the nearest within a
@@ -665,19 +782,26 @@ export function createLights(
     const frame = box.getBoundingClientRect();
     const at = map.project(origin);
     const k = 2 ** (map.getZoom() - restZoom);
-    const centres = [...entries].map(([id, { x, y }]) => ({
+    const centres = [...entries].map(([id, { el, x, y }]) => ({
       id,
       x: frame.left + k * x + at.x,
       y: frame.top + k * y + at.y,
+      dot: isDot(el),
     }));
     // A button's reach (src/map.css .lt::before): 44 px across under a
     // finger, 32 under a mouse.
     const reach = window.matchMedia("(pointer: coarse)").matches ? 22 : 16;
-    const id = nearestLight(centres, event.clientX, event.clientY, reach);
+    const id = tappedLight(
+      centres,
+      event.clientX,
+      event.clientY,
+      reach,
+      DOT_REACH,
+    );
     const spot = id ? byId.get(id) : undefined;
     if (!spot) return;
     event.stopPropagation();
-    onSelect(spot);
+    press(spot, true);
   };
   window.addEventListener("click", tapped, true);
   measure();
@@ -686,8 +810,53 @@ export function createLights(
   map.on("move", follow);
   map.on("moveend", end);
   map.on("resize", resized);
+  /** What a dot's card reads, as the lights were last told it. */
+  let readings: ReadonlyMap<string, LightState> = new Map();
+  let shownIn: Units = "kn";
+  let shownWhen: string | null = null;
+  // Made after `follow` takes the map's `move`, so it stands by the button
+  // as moved for this frame, not the last.
+  const card = createMapCard<Entry>(map, "lt-card", ({ spot }, el) => {
+    const s = readings.get(spot.id);
+    const words = dotWords(s, shownWhen, shownIn);
+    el.replaceChildren();
+    const head = part("div", "map-card-head");
+    head.append(part("b", "map-card-name", spot.name));
+    if (spot.county)
+      head.append(part("span", "map-card-net", `Co. ${spot.county}`));
+    el.append(head);
+    if (words.calm) {
+      const figures = part("div", "map-card-wind");
+      figures.append(part("b", "map-card-speed", "Calm"));
+      el.append(figures);
+    } else if (words.speed !== null) {
+      const figures = part("div", "map-card-wind");
+      const from = s?.from ?? null;
+      figures.append(
+        arrowSvg(from).svg,
+        part("b", "map-card-speed", words.speed),
+        ...(words.gust
+          ? [part("span", "map-card-gust", `g${words.gust}`)]
+          : []),
+        ...(shownIn === "bft"
+          ? []
+          : [part("span", "map-card-unit", unitLabel(shownIn))]),
+        ...(s?.compass ? [part("span", "map-card-from", s.compass)] : []),
+      );
+      el.append(figures);
+    }
+    el.append(part("div", "map-card-when", words.line));
+    if (card.pinned && link) {
+      const open = part("a", "map-card-link", "Open spot") as HTMLAnchorElement;
+      open.href = link(spot);
+      el.append(open);
+    }
+  });
   return {
-    update(states, selected, named, label, units) {
+    update(states, selected, named, label, units, when = null) {
+      readings = states;
+      shownIn = units;
+      shownWhen = when;
       for (const spot of spots) {
         const entry = entries.get(spot.id);
         if (!entry) continue;
@@ -695,7 +864,7 @@ export function createLights(
         const on = spot.id === selected;
         const w = s?.wedge;
         const key = s
-          ? `${s.pending}|${s.stars}|${s.dark}|${s.mark}|${s.from === null ? "" : Math.round(s.from)}|${s.windKn === null ? "" : speedShort(s.windKn, units)}|${s.gustKn == null ? "" : speedShort(s.gustKn, units)}|${w ? `${Math.round(w.from)},${Math.round(w.to)},${Math.round(w.power * 20)},${w.state}` : ""}|${on}|${named.has(spot.id)}`
+          ? `${s.pending}|${s.stars}|${s.dark}|${s.mark}|${s.from === null ? "" : Math.round(s.from)}|${s.windKn === null ? "" : speedShort(s.windKn, units)}|${s.gustKn == null ? "" : speedShort(s.gustKn, units)}|${w ? `${Math.round(w.from)},${Math.round(w.to)},${Math.round(w.power * 20)},${w.state}` : ""}|${on}|${named.has(spot.id)}|${!!s.unlisted}`
           : `none|${on}|${named.has(spot.id)}`;
         if (entry.key === key) continue;
         entry.key = key;
@@ -714,6 +883,7 @@ export function createLights(
           ...(w?.state === "over" ? ["w-over"] : []),
           ...(on ? ["sel", "active"] : []),
           ...(named.has(spot.id) ? ["named"] : []),
+          ...(s?.unlisted ? ["lt-dot"] : []),
         ]);
         for (const name of MANAGED) el.classList.toggle(name, want.has(name));
         entry.figure.textContent =
@@ -764,6 +934,12 @@ export function createLights(
       }
       if (dirty) queue();
       rove();
+      // The card keeps up with its dot, or goes with it onto the list.
+      const shown = card.open;
+      if (shown) {
+        if (isDot(shown.el)) card.show(shown, card.pinned);
+        else card.hide();
+      }
     },
     element: (id) => entries.get(id)?.el,
     choose(id) {
@@ -802,6 +978,8 @@ export function createLights(
       map.off("move", follow);
       map.off("moveend", end);
       map.off("resize", resized);
+      card.destroy();
+      window.removeEventListener("pointerdown", onPress, true);
       window.removeEventListener("click", tapped, true);
       layer.removeEventListener("keydown", onKey);
       layer.removeEventListener("focusin", onFocus);

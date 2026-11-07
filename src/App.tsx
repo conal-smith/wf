@@ -97,7 +97,7 @@ import { ALL_SQUARES, useSpotSquaresState } from "./useSpotSquares";
 import { blendColumnModels, trustedSpotBlend } from "./spotBlend";
 import { useBlendSquares, useSpotBlend } from "./useSpotBlend";
 import { useViewBounds } from "./useViewBounds";
-import { squaresToRead } from "../force5/src/squares";
+import { squaresToRead, type ViewBounds } from "../force5/src/squares";
 import { usePointSeries } from "./usePointSeries";
 import {
   handedPointHours,
@@ -114,6 +114,7 @@ import {
   openingColumn,
   stripColumns,
 } from "./strip";
+import { nearSpots } from "./finder/finder";
 import { ridingLocations } from "./locations";
 import { openingSpot, spotAddress } from "./openingSpot";
 import {
@@ -397,8 +398,15 @@ export default function App() {
   }, [mapWanted, page, split, finderDrawn]);
   /** The places the spot finder lists, which it needs rated first. */
   const [finderWant, setFinderWant] = useState<readonly string[]>([]);
-  /** Which list it is (Favourites, Near you), for the chart beside it to fit. */
+  /**
+   * Which list it is (Favourites, Near you), for the chart beside it to fit;
+   * none until the list is known.
+   */
   const [finderScope, setFinderScope] = useState<string>("");
+  const finderScopeRef = useRef(finderScope);
+  finderScopeRef.current = finderScope;
+  /** The chart beside the list has been fitted, so Nearby may follow its view. */
+  const [listFollows, setListFollows] = useState(false);
   /** The time the cards show, which the lights beside them show too. */
   const [finderShown, setFinderShown] = useState<number | null>(null);
   /** Where the rider is, once their browser has said: the blue dot. */
@@ -1158,6 +1166,8 @@ export default function App() {
   const lightAt = page === "chart" ? selected : panelAt;
   const lights = useMemo(() => {
     const out = new Map<string, LightState>();
+    // Beside the list, a spot it has no card for is a muted dot.
+    const listed = page === "chart" ? null : new Set(finderWant);
     // The riding wedge is the open spot's alone: on every light at once it
     // buried the chart, and it is a reading of one place, not an overview.
     // Under the loupe it goes: the rose is the same thing, bigger.
@@ -1185,6 +1195,7 @@ export default function App() {
                 spot.facing ?? null,
               )
             : null,
+        unlisted: !!listed && !listed.has(spot.id),
       });
     }
     return out;
@@ -1193,6 +1204,8 @@ export default function App() {
     hours,
     version,
     lightAt,
+    page,
+    finderWant,
     rider,
     picked,
     point?.id,
@@ -1612,11 +1625,30 @@ export default function App() {
     const to = panelRef.current;
     if (!splitRef.current || !el || !map || !to) return setPage("finder");
     // The map's own pixels start under the bar.
-    const middle = map.unproject([
-      to.left + to.width / 2,
-      to.top - barBottom() + to.height / 2,
-    ]);
+    const panelMiddle = {
+      x: to.left + to.width / 2,
+      y: to.top - barBottom() + to.height / 2,
+    };
+    const middle = map.unproject([panelMiddle.x, panelMiddle.y]);
     backTo.current = { lng: middle.lng, lat: middle.lat };
+    // Nearby's map is not fitted again, so opening is undone: the full chart's
+    // middle glides to the panel's middle as the box shrinks round it, and a
+    // trip out and back leaves the map, and so the list, where they were.
+    if (listFollows && finderScopeRef.current === "near") {
+      const { lng, lat } = map.getCenter();
+      backTo.current = { lng, lat };
+      if (!motionRef.current) {
+        const at = map.project([lng, lat]);
+        map.easeTo({
+          center: map.unproject([
+            2 * at.x - panelMiddle.x,
+            2 * at.y - panelMiddle.y,
+          ]),
+          duration: OPEN_MS,
+          easing: (t) => 1 - (1 - t) ** 3,
+        });
+      }
+    }
     if (motionRef.current || !el.animate) return setPage("finder");
     const shrink = el.animate(
       [
@@ -1685,10 +1717,14 @@ export default function App() {
     const middle = backTo.current;
     backTo.current = null;
     if (!middle || !map) return;
-    fitted.current = fitKey;
+    // Nearby follows the map, so it stays where it is put.
+    const stay = listFollows && finderScope === "near";
+    if (!stay) fitted.current = fitKey;
     const settle = () => {
       map.jumpTo({ center: middle });
+      if (stay) return;
       fitList(600);
+      setListFollows(true);
     };
     map.once("resize", settle);
     window.setTimeout(() => map.off("resize", settle), 200);
@@ -1767,53 +1803,69 @@ export default function App() {
   }, [mapReady]);
 
   /* ---- the chart beside the list ---- */
-  /** The places on the list, the only lights the chart beside it shows. */
+  /** The places on the list: those the chart beside it shows as pills. */
   const listedSpots = useMemo(() => {
     const ids = new Set(finderWant);
     return spots.filter((spot) => ids.has(spot.id));
   }, [spots, finderWant]);
   /**
    * The chart beside the list is fitted to the places on it as it first
-   * shows them, and again when the list changes between Favourites and Near
-   * you, or the rider's place comes in: never on a hover. Near you, with the
-   * rider's place, it opens round them instead, at the zoom their own coast's
-   * tidal depth is at full strength; the spots further out are a pan away.
+   * shows them, and again when the list changes to Favourites, or the rider's
+   * place comes in: never on a hover, and never because the list changed,
+   * since Nearby follows the map (src/finder/SpotFinder.tsx) and a fit moves
+   * the map: only `fitKey` starts one. Near you, with the rider's place, it
+   * opens round them instead, at the zoom their own coast's tidal depth is at
+   * full strength, if any spot is round them; the spots further out are a pan
+   * away. Without their place, Near you is fitted only as the chart opens.
    */
   const fitKey = `${finderScope}|${riderAt ? "rider" : ""}`;
   const fitted = useRef<string | null>(null);
   const fitList = (duration: number) => {
     const map = controls.current?.map;
-    const bounds = spotsBounds(listedSpots);
-    if (!map || !bounds) return;
     const round = finderScope === "near" ? riderAt : null;
-    map.fitBounds(
-      round
-        ? [
-            [round.lon, round.lat],
-            [round.lon, round.lat],
-          ]
-        : bounds,
-      {
-        padding: fitPadding,
-        maxZoom: round ? FOIL_FULL_ZOOM : 11,
-        duration: reducedMotion ? 0 : duration,
-      },
-    );
+    const bounds = round
+      ? nearSpots(spots, round).length
+        ? spotsBounds([round])
+        : null
+      : spotsBounds(listedSpots);
+    if (!map || !bounds) return;
+    map.fitBounds(bounds, {
+      padding: fitPadding,
+      maxZoom: round ? FOIL_FULL_ZOOM : 11,
+      duration: reducedMotion ? 0 : duration,
+    });
   };
   useEffect(() => {
-    if (!mapReady || page !== "finder" || !split || !listedSpots.length) return;
+    if (!mapReady || page !== "finder" || !split || !finderScope) return;
+    const near = finderScope === "near";
+    if (!near && !listedSpots.length) return;
     if (fitted.current === fitKey) return;
     const first = fitted.current === null;
     fitted.current = fitKey;
-    fitList(first ? 0 : 600);
+    if (!near || riderAt || !listFollows) fitList(first ? 0 : 600);
+    setListFollows(true);
   }, [mapReady, page, split, fitKey, listedSpots]);
-  /** A card under the pointer: its light lit, and brought into view if it is not. */
+  /**
+   * What Nearby lists: the chart's view beside the list, once it has been
+   * fitted, and held under the full chart, which moves it nothing: the list
+   * takes the view again as the map settles back beside it.
+   */
+  const [panelView, setPanelView] = useState<ViewBounds | null>(null);
+  useEffect(() => {
+    if (listFollows && pageRef.current === "finder") setPanelView(mapView);
+  }, [listFollows, mapView]);
+  /**
+   * A card under the pointer: its light lit, and on Favourites brought into
+   * view if it is not. Never on Nearby: its cards are the spots in view
+   * already, and a pan would change the list under the pointer.
+   */
   const hoverTimer = useRef(0);
   const hoverCard = useCallback(
     (id: string | null) => {
       controls.current?.light(id);
       window.clearTimeout(hoverTimer.current);
       if (!id || pageRef.current !== "finder" || !splitRef.current) return;
+      if (finderScopeRef.current === "near") return;
       // A moment's wait, so the pointer passing over the cards on its way
       // does not throw the chart about; the zoom is never changed.
       hoverTimer.current = window.setTimeout(() => {
@@ -2366,9 +2418,11 @@ export default function App() {
     </div>
   );
   /** The hour the lights beside the list show, as the cards say it. */
-  const panelWhen =
-    lightColumn &&
-    `Stars at ${clock(lightColumn.time)} ${onDay(lightColumn.time, clockNow)}`;
+  const lightWhen = lightColumn
+    ? `at ${clock(lightColumn.time)} ${onDay(lightColumn.time, clockNow)}`
+    : null;
+  const panelWhen = lightWhen && `Stars ${lightWhen}`;
+  const lightLink = (spot: Spot) => spotHref(spot.id, lightColumn?.validTime);
   const leaveTour = () => {
     tourSeen();
     setGuide(null);
@@ -2484,6 +2538,7 @@ export default function App() {
                   phone={phone}
                   onWant={onWant}
                   beside={split}
+                  view={panelView}
                   onHover={hoverCard}
                   onShown={setFinderShown}
                   onPlace={setRiderAt}
@@ -2591,16 +2646,19 @@ export default function App() {
               )}
               {/* After the boxes: the keys reach the menu, the search and the
                 controls before the lights. One map, made once and never
-                taken down: beside the list it shows the list's places
-                alone, at the cards' hour, with no loupe and no scrub bar. */}
+                taken down: beside the list it shows the list's places as
+                pills and the rest as muted dots, at the cards' hour, with no
+                loupe and no scrub bar. */}
               {mapWanted && (
                 <Suspense fallback={null}>
                   <WindMap
                     frame={mapDraws ? frame : null}
-                    spots={onChart ? spots : listedSpots}
+                    spots={spots}
                     lights={lights}
                     named={onChart ? named : NO_NAMES}
                     lightLabel={lightLabel}
+                    lightWhen={lightWhen}
+                    lightLink={lightLink}
                     selectedId={onChart && !picked ? (point?.id ?? null) : null}
                     focus={
                       onChart && focusAt
@@ -2640,13 +2698,15 @@ export default function App() {
                     onSelect={(spot) =>
                       pageRef.current === "chart"
                         ? openLight(spot)
-                        : showCard(spot)
+                        : lights.get(spot.id)?.unlisted
+                          ? window.location.assign(lightLink(spot))
+                          : showCard(spot)
                     }
                     onHoverSpot={hoverLight}
                     onOpenPage={(place) =>
                       window.location.assign(
                         "id" in place
-                          ? spotHref(place.id, column?.validTime)
+                          ? lightLink(place)
                           : pointHref(place.lat, place.lon, column?.validTime),
                       )
                     }

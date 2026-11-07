@@ -994,3 +994,40 @@ just have one loupe." The satellite picture and the finder's cards draw the same
 component, `Loupe` (shared/web/Loupe.tsx), a card's in small; the card's own
 drawing is gone. The chart draws the same rose and dial from the same geometry
 (force5/src/focus.ts) over the map.
+
+**2026-11-07 — The list follows the map.** The owner: "if I scroll over to
+Dublin and I don't have a location set, it should start showing me some of the
+spots there... the user can change where they're searching by scrolling around
+on the chart on the right hand side and then the list should update based on
+what they can see." And: "Even if we show them just as little muted dots, that
+would be better because then I can hover over it and then I can see the spot
+information. Like I can see that there's no wind."
+
+On a wide screen, Nearby is the spots in the map's view, read when the camera
+settles and never through a pan, in the list's usual order, its sort and filter
+kept, and with distances where the rider's place is known. At most 30 cards, the
+best of the spots in view; the count at the head stays true, and a quiet line
+after the list says to zoom in for the rest. An empty view says so. Before the
+map has a view the list is the one 2026-10-26 gives, and the map opens as it
+did: fitted to that list, or round the rider. It is never fitted because the
+list changed, since a fit moves the map and the map is what the list follows.
+Favourites keeps the rider's own list, fitted as before; under the wide width
+Nearby is as it was. A card under the pointer no longer pans the map on Nearby,
+because its spot is already in view and a pan would change the list under the
+pointer; on Favourites it still does.
+
+Every spot now stands on the finder's map. A listed spot is a pill; any other is
+a small muted dot, with no stars' colour and no offshore red, that never thins a
+pill or moves a name. Under the pointer or the keys a dot opens a card with the
+wind where the wind blows, the gust, the compass word, and the stars or the
+offshore word at the cards' hour; a calm spot reads "Calm". A press opens the
+spot's page; on a touch screen a tap pins the card, which holds the link.
+
+This replaces, in 2026-10-26, the chart showing only the listed spots and being
+fitted when the list changes, and on a wide screen the 12 spots nearest where
+the chart was and "No spots within 30 km of you.", both of which stay for the
+narrow list and the first paint. It replaces, in 2026-10-27, the spots nearest
+where the chart was as what a wide Near you shows without the rider's place. In
+the 2026-11-07 entry on the rider's place, the map still opens round them at
+`FOIL_FULL_ZOOM`, and the list is then what is in view, not every spot within
+30 km.

@@ -351,6 +351,15 @@ test.describe("on a desktop", () => {
     });
   });
 
+  test("a card's loupe keeps its own colours: a white rim, never the page's default black", async ({
+    page,
+  }) => {
+    await star(page, ["brandon"]);
+    await openFinder(page);
+    const rim = cards(page).first().locator("[data-loupe-rim]");
+    await expect(rim).toHaveCSS("stroke", "rgb(255, 255, 255)");
+  });
+
   test("a card's star unstars it, and the list follows", async ({ page }) => {
     await star(page, ["brandon", "dollymount", "keel"]);
     await openFinder(page);
@@ -372,6 +381,8 @@ test.describe("on a desktop", () => {
     page,
     context,
   }) => {
+    // Under the width for the map beside the list: the list follows no view.
+    await page.setViewportSize({ width: 800, height: 900 });
     await context.grantPermissions(["geolocation"]);
     await context.setGeolocation(DUBLIN);
     await openFinder(page);
@@ -617,6 +628,8 @@ test.describe("on a desktop", () => {
   test("a first visit with the location refused lists the spots nearest the middle of Ireland, and never asks again", async ({
     page,
   }) => {
+    // Under the width for the map beside the list: the list follows no view.
+    await page.setViewportSize({ width: 800, height: 900 });
     // No permission: the browser says no, once asked.
     await openFinder(page);
     await expect(finder(page)).toHaveAttribute("data-scope", "near");
@@ -670,6 +683,8 @@ test.describe("on a desktop", () => {
   test("a browser that never answers: after a few seconds, the spots nearest the middle of Ireland", async ({
     page,
   }) => {
+    // Under the width for the map beside the list: the list follows no view.
+    await page.setViewportSize({ width: 800, height: 900 });
     await unanswered(page, DUBLIN);
     await openFinder(page);
     await useMyLocation(page);
@@ -690,6 +705,8 @@ test.describe("on a desktop", () => {
     page,
     context,
   }) => {
+    // Under the width for the map beside the list: the list follows no view.
+    await page.setViewportSize({ width: 800, height: 900 });
     await context.grantPermissions(["geolocation"]);
     await context.setGeolocation(ATHLONE);
     await openFinder(page);
@@ -755,6 +772,8 @@ test.describe("on a desktop", () => {
   test("nearby, refused, looks round where the chart was, and never asks again", async ({
     page,
   }) => {
+    // Under the width for the map beside the list: the list follows no view.
+    await page.setViewportSize({ width: 800, height: 900 });
     await star(page, ["brandon"]);
     // No permission: the browser says no.
     await page.addInitScript(() =>
