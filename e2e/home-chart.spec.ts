@@ -334,6 +334,7 @@ test.describe("on a wide screen", () => {
       .getByRole("group", { name: "Which spots" })
       .getByRole("button", { name: "Nearby" })
       .click();
+    await page.locator("[data-finder-filter]").click();
     await page.getByRole("button", { name: "Use my location" }).click();
     await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1, {
       timeout: 30000,
@@ -358,6 +359,7 @@ test.describe("a first visit, with no favourites", () => {
     await context.setGeolocation(DUBLIN);
     await page.goto("/");
     await expect(finder(page)).toHaveAttribute("data-scope", "near");
+    await page.locator("[data-finder-filter]").click();
     await page.getByRole("button", { name: "Use my location" }).click();
     await expect(cards(page).filter({ hasText: "Dollymount" })).toHaveCount(1, {
       timeout: 30000,
@@ -376,7 +378,6 @@ test.describe("a first visit, with no favourites", () => {
     await page.goto("/");
     await expect(finder(page)).toHaveAttribute("data-scope", "near");
     await expect(cards(page)).toHaveCount(12, { timeout: 30000 });
-    await expect(page.locator("[data-finder-note]")).toBeVisible();
     await expect(lights(page)).toHaveCount(12, { timeout: 30000 });
     await expect(page.getByRole("img", { name: "You are here" })).toHaveCount(
       0,

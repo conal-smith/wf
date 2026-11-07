@@ -1,15 +1,15 @@
 """The faint glow along the coast, where the tidal depth's tiles are not read.
 
 One small picture, made once from the regions' z8 overviews
-(coast_glow_tiles.mjs writes them): the sea near the shore, strongest in the
-shallows and soft out to sea, in one blue, with nothing on the land. It holds
+(coast_glow_tiles.mjs writes them): the shallows and only them, with a hair of
+softness at their edge, in one blue, with nothing on the land. It holds
 no tide: the map lays it under the marks below the zoom the real layer starts
 at (FOIL_MIN_ZOOM, force5/src/foilDepth.ts), for what it costs to show one
 image.
 
     python3 scripts/foildepth/coast_glow.py --tiles .cache/coast-glow
 
-Prints the corners for COAST_GLOW_BOUNDS in force5/src/foilDepth.ts.
+Prints the corners for COAST_GLOW_CORNERS in force5/src/foilDepth.ts.
 """
 import argparse
 import io
@@ -31,6 +31,11 @@ DEEP = -20.0
 #: Half the overview's pixels are plenty for a soft image.
 SCALE = 2
 BLUE = (64, 168, 218)
+#: The glow past the shallows: its strength, and how far it reaches in z8 pixels,
+#: about 300 m each. It stays on the shallows themselves, not out over the sea.
+HALO = 0.22
+REACH = 3
+BANDS = 0.5
 
 
 def heights(raw: bytes) -> np.ndarray:
@@ -82,12 +87,12 @@ def main() -> None:
     shallow = np.where(np.isnan(bed), 0.0, np.clip(1 - (LEVEL - bed) / (LEVEL - FLOOR), 0, 1))
     near = shallow > 0
     sea = ~land
-    # Soft from the shallows out to sea, stronger over them, and masked by the
-    # sea, so nothing of it is drawn on the land.
-    halo = 0.5 * np.exp(-distance_transform_edt(~near) / 34)
-    bands = 0.42 * gaussian_filter(shallow, 4)
-    alpha = np.clip(halo + bands, 0, 0.8)
-    alpha = gaussian_filter(alpha, 3) * gaussian_filter(sea.astype(np.float64), 1.2)
+    # On the shallows, a hair soft at their edge, and masked by the sea, so
+    # nothing of it is drawn on the land.
+    halo = HALO * np.exp(-distance_transform_edt(~near) / REACH)
+    bands = BANDS * gaussian_filter(shallow, 2)
+    alpha = np.clip(halo + bands, 0, 0.55)
+    alpha = gaussian_filter(alpha, 1.5) * gaussian_filter(sea.astype(np.float64), 1.2)
     alpha = alpha[::SCALE, ::SCALE]
 
     rgba = np.zeros((*alpha.shape, 4), dtype=np.uint8)

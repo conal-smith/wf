@@ -1,7 +1,6 @@
 /**
  * Where the rider is, for "near you": the browser is asked once, when the
- * rider presses "Use my location" under the line that says why it is
- * wanted, never on its own. A yes is kept on this device and the place is
+ * rider presses "Use my location" in the filter sheet, never on its own. A yes is kept on this device and the place is
  * read again quietly on later visits (the browser does not ask twice); a no
  * is kept too, and the browser is never asked again. Without a place, the
  * finder looks round where the chart was last centred (src/lastView.ts).

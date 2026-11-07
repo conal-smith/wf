@@ -50,7 +50,7 @@ export const FOIL_MIN_ZOOM = 9;
 export const FOIL_FULL_ZOOM = 9.7;
 
 /**
- * The faint blue along the coast where the layer's tiles are not read: one
+ * The faint blue on the shallows where the layer's tiles are not read: one
  * small picture made once from the regions' overviews
  * (scripts/foildepth/coast_glow.py), under BASE_URL. No tide and no figures:
  * it says where the shallows lie, for what it costs to show one image.

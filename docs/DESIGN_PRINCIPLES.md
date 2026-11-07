@@ -952,3 +952,14 @@ either on turns the other off.
   ensemble lands.
 - **The phone app** (`mobile/`) still draws from its own hand-written radius
   and shadow tokens in the old look; porting it is its own piece of work.
+
+**2026-11-07 — The finder is the list, and the glow stays on the shallows.**
+The owner on the line over the cards: "I just want the list of nearby
+locations... simpler, more clean." So the finder has neither the day's best
+hour over its cards nor the line saying where the list is measured from, which
+replaces both in 2026-10-26 and 2026-10-27; the spots are simply listed. "Use my
+location" stays, in the filter sheet, the one way the browser is asked. On the
+glow: "It's only meant to show essentially the really shallow parts of the
+water, so it should only be a very subtle little glow around the coastline until
+you zoom in and then you see the real data." It is drawn on the shallows and
+reaches a few hundred metres past them, not out over the sea.

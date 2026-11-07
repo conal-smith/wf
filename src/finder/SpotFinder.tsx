@@ -20,9 +20,9 @@
  * address (`/?tab=favourites`, finder.ts `TAB_PARAM`) once one is chosen, so
  * either can be linked to, kept and reloaded.
  * Near you never asks the browser where the rider is unasked: without
- * their place one line says what the list is and why the place is wanted,
- * beside a "Use my location" button, over the spots nearest where the chart
- * was, which give no distances.
+ * their place it is the spots nearest where the chart was, which give no
+ * distances, and nothing over the cards says so. "Use my location" is in the
+ * filter sheet.
  *
  * The home page (since 26 October 2026). On a wide screen the chart stands
  * beside the list, drawn by src/App.tsx over the room the list leaves it
@@ -57,21 +57,11 @@ import { Chip } from "../../ui/Chip";
 import { Dialog } from "../../ui/Dialog";
 import { Link } from "../../ui/Link";
 import { Segmented } from "../../ui/Segmented";
-import { StarGlyphs } from "../../ui/StarGlyphs";
 import { tv } from "../../ui/tv";
 import type { PlaceHour } from "../ratings";
-import {
-  clock,
-  dayLong,
-  dayShort,
-  irishDate,
-  onDay,
-  openingColumn,
-  type StripColumn,
-} from "../strip";
+import { irishDate, onDay, openingColumn, type StripColumn } from "../strip";
 import {
   HOUR,
-  bestHourOn,
   bestStars,
   cardDates,
   columnsByTime,
@@ -79,7 +69,6 @@ import {
   dayRow,
   listFor,
   nearestHour,
-  nextBestHour,
   openingDay,
   openingScope,
   orderSpots,
@@ -89,7 +78,6 @@ import {
   scopeInAddress,
   shownColumn,
   withStars,
-  type BestHour,
   type Listed,
   type Order,
   type Scope,
@@ -138,22 +126,12 @@ const styles = tv({
     group: "m-0 grid gap-2 border-0 p-0",
     groupName: "m-0 p-0 font-body text-body font-medium text-ink-muted",
     filterRow: "flex flex-wrap items-center gap-2",
-    // Near you without the rider's place: what the list is, why the place is
-    // wanted and the one way to give it, in a line over the cards.
-    ask: "flex items-center gap-3 px-0.5 pb-3",
-    askAction: "shrink-0",
-    // The day's best hour, first: the list's answer, in figures.
-    lead: "m-0 flex min-h-8 flex-wrap items-center gap-x-2 gap-y-1 px-0.5 pb-3 text-body leading-normal text-ink-2",
-    leadName: "font-semibold text-ink",
     // One card a row beside the chart; alone on a wide window, two, so a
     // card's hours never stretch across the screen.
     cards: "m-0 grid list-none grid-cols-1 items-start gap-2 p-0",
     cardsAlone: "rail:grid-cols-2",
     empty:
       "rounded-surface bg-sunken on-card px-4 py-3.5 text-prose leading-normal text-ink-2",
-    // Above the cards: where "near you" is measured from, when that is not
-    // the rider.
-    note: "m-0 min-w-0 flex-1 text-body leading-normal text-ink-muted",
   },
 });
 
@@ -217,54 +195,6 @@ export interface FinderProps {
   stations?: readonly WindStation[] | null;
 }
 
-/**
- * The list's answer, in figures: the best hour on the day shown, or that the
- * day has no stars and the next that does, one press away. It says what is
- * there and leaves the choice to the rider (the information rule).
- */
-function DayLead({
-  lead,
-  next,
-  word,
-  onDay: chooseDay,
-}: {
-  lead: BestHour | null;
-  next: BestHour | null;
-  /** The day shown, for the end of a sentence: "today", "on Monday". */
-  word: string;
-  onDay: (date: string) => void;
-}) {
-  const s = styles();
-  const shown = lead ?? next;
-  return (
-    <p className={s.lead()} data-finder-lead>
-      <span>{lead ? `Best ${word}:` : `No stars ${word}.`}</span>
-      {!shown && <span>None in the days ahead.</span>}
-      {shown && (
-        <>
-          {!lead && <span>Next:</span>}
-          <span className={s.leadName()}>{shown.spot.name}</span>
-          <StarGlyphs stars={shown.stars} size={12} coloured />
-          <span>
-            {!lead && `${dayShort(shown.time)} `}
-            {clock(shown.time)}
-          </span>
-        </>
-      )}
-      {next && (
-        <Button
-          variant="quiet"
-          size="sm"
-          onClick={() => chooseDay(next.date)}
-          data-finder-next
-        >
-          Show {dayLong(next.time)}
-        </Button>
-      )}
-    </p>
-  );
-}
-
 export default function SpotFinder(props: FinderProps) {
   const {
     spots,
@@ -299,8 +229,8 @@ export default function SpotFinder(props: FinderProps) {
   // Whether the address is to name the tab: one was chosen, or named.
   const [named, setNamed] = useState(() => kept !== null);
   // The browser is asked where the rider is only when they press "Use my
-  // location", under the line that says why; a place kept from an earlier
-  // yes is read again quietly on Near you.
+  // location" in the filter sheet; a place kept from an earlier yes is read
+  // again quietly on Near you.
   const [asked, setAsked] = useState(false);
   const place = useRiderPlace(
     asked || (onScreen && scope === "near" && knownBefore()),
@@ -475,18 +405,6 @@ export default function SpotFinder(props: FinderProps) {
   const counted = !waiting && !placesDue;
   // "today", "tomorrow", "on Thursday": the day shown, in a sentence.
   const onTheDay = onDay(noon, now);
-  // The answer over the cards: the day's best hour on this list, or the next
-  // day that has one. Only once the list's hours are in: until then "no stars"
-  // would be a guess.
-  const rated = listedSpots.filter((spot) => hours.has(spot.id));
-  const lead = useMemo(
-    () => bestHourOn(rated, hours, strip, day, now),
-    [listedSpots, version, strip, day, halfHour],
-  );
-  const nextLead = useMemo(
-    () => (lead ? null : nextBestHour(rated, hours, strip, dates, day, now)),
-    [lead, listedSpots, version, strip, dates, day, halfHour],
-  );
   const canAsk =
     scope === "near" && !known && !waiting && !place.refused && place.locates;
   const grid = s.cards({ class: beside ? undefined : s.cardsAlone() });
@@ -603,45 +521,25 @@ export default function SpotFinder(props: FinderProps) {
                   onChange={onModel}
                 />
               </div>
+              {canAsk && (
+                <div className={s.group()}>
+                  <p className={s.groupName()}>Location</p>
+                  <div className={s.filterRow()}>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setAsked(true);
+                        setFiltering(false);
+                      }}
+                    >
+                      <MapPin size={16} strokeWidth={1.75} aria-hidden="true" />
+                      Use my location
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </Dialog>
-          {!placesDue && rated.length > 0 ? (
-            <DayLead
-              lead={lead}
-              next={nextLead}
-              word={onTheDay}
-              onDay={chooseDay}
-            />
-          ) : // Its room, while the hours are read, so the cards do not move
-          // when it lands.
-          ranked.length > 0 || placesDue ? (
-            <p className={s.lead()} />
-          ) : null}
-          {scope === "near" &&
-            !known &&
-            !waiting &&
-            // Over the cards' shapes as well, so it does not push them
-            // down when they land.
-            (canAsk || ranked.length > 0 || placesDue) && (
-              <div className={s.ask()} data-finder-ask={canAsk || undefined}>
-                <p className={s.note()} data-finder-note>
-                  {place.source === "chart"
-                    ? "Nearest the part of the chart you last looked at."
-                    : "Nearest the middle of Ireland."}
-                  {canAsk && " Your location lists those within 30 km."}
-                </p>
-                {canAsk && (
-                  <Button
-                    size="sm"
-                    className={s.askAction()}
-                    onClick={() => setAsked(true)}
-                  >
-                    <MapPin size={16} strokeWidth={1.75} aria-hidden="true" />
-                    Use my location
-                  </Button>
-                )}
-              </div>
-            )}
           {placesDue ? (
             <div className={grid} data-finder-loading>
               {Array.from(
