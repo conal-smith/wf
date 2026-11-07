@@ -260,6 +260,7 @@ export function Loupe({
         <g filter={`url(#${id}-s)`}>
           <circle
             r={R}
+            data-loupe-rim
             className="fill-none stroke-photo-line"
             strokeOpacity={0.96}
             strokeWidth={card ? 1.4 : 2.2}

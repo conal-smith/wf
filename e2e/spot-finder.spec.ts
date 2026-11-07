@@ -351,6 +351,15 @@ test.describe("on a desktop", () => {
     });
   });
 
+  test("a card's loupe keeps its own colours: a white rim, never the page's default black", async ({
+    page,
+  }) => {
+    await star(page, ["brandon"]);
+    await openFinder(page);
+    const rim = cards(page).first().locator("[data-loupe-rim]");
+    await expect(rim).toHaveCSS("stroke", "rgb(255, 255, 255)");
+  });
+
   test("a card's star unstars it, and the list follows", async ({ page }) => {
     await star(page, ["brandon", "dollymount", "keel"]);
     await openFinder(page);
