@@ -129,6 +129,23 @@ test("hovering the graph reads out that hour; a day card moves to its day", asyn
   await expect(second).toHaveAttribute("aria-pressed", "true");
 });
 
+test("a day card takes the whole page to that day, and today back to now", async ({
+  page,
+}) => {
+  await withTides(page);
+  await page.goto("/spot/brandon");
+  await expect(heading(page)).toBeVisible({ timeout: 30000 });
+  await expect(page.locator("[data-readout]")).toContainText("Now");
+  const now = await page.locator("[data-now]").innerText();
+  await page.locator("[data-day-card]").nth(2).click();
+  // Midday on that day: the cards over the graph, and its readout, read it.
+  await expect(page.locator("[data-readout]")).toContainText("12:00");
+  await expect(page.locator("[data-now]")).not.toHaveText(now);
+  await page.locator("[data-day-card]").nth(0).click();
+  await expect(page.locator("[data-readout]")).toContainText("Now");
+  await expect(page.locator("[data-now]")).toHaveText(now);
+});
+
 test("a wheel or a trackpad over the graph reads out the hour that comes under the pointer", async ({
   page,
 }) => {
@@ -677,20 +694,22 @@ test("under the week graph: the wind blend, the gusts, the waves, the current an
   await expect(
     graph.locator('[data-band="wind-blend"] path[data-blend]'),
   ).toHaveCount(1);
-  const fill = await graph.locator('[data-band="wind-blend"]').evaluate((band) => {
-    const ys = [...band.querySelectorAll("line")].map((line) =>
-      Number(line.getAttribute("y1")),
-    );
-    const boxes = [...band.querySelectorAll("path[data-model]")].map((path) =>
-      (path as SVGGraphicsElement).getBBox(),
-    );
-    return {
-      top: Math.min(...ys),
-      bottom: Math.max(...ys),
-      high: Math.min(...boxes.map((box) => box.y)),
-      low: Math.max(...boxes.map((box) => box.y + box.height)),
-    };
-  });
+  const fill = await graph
+    .locator('[data-band="wind-blend"]')
+    .evaluate((band) => {
+      const ys = [...band.querySelectorAll("line")].map((line) =>
+        Number(line.getAttribute("y1")),
+      );
+      const boxes = [...band.querySelectorAll("path[data-model]")].map((path) =>
+        (path as SVGGraphicsElement).getBBox(),
+      );
+      return {
+        top: Math.min(...ys),
+        bottom: Math.max(...ys),
+        high: Math.min(...boxes.map((box) => box.y)),
+        low: Math.max(...boxes.map((box) => box.y + box.height)),
+      };
+    });
   expect(fill.high).toBeGreaterThanOrEqual(fill.top - 2);
   expect(fill.low).toBeLessThanOrEqual(fill.bottom + 2);
   expect(fill.low - fill.high).toBeGreaterThan((fill.bottom - fill.top) / 3);
@@ -1190,9 +1209,7 @@ test.describe("on a phone, the week graph", () => {
     const graph = page.locator("[data-spot-graph]");
     const readout = page.locator("[data-readout]");
     await expect(page.locator("[data-graph-svg]")).toBeVisible();
-    const names = page.locator(
-      '[data-week-section="wind"] [data-band-name]',
-    );
+    const names = page.locator('[data-week-section="wind"] [data-band-name]');
     await expect(names).toHaveText([
       "Stars",
       "Wind",
