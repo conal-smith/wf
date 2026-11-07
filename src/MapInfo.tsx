@@ -424,7 +424,7 @@ function MapKey({ scale }: { scale: string }) {
           </li>
           <li>
             <i className="mi-sw-off" aria-hidden="true" />
-            Offshore winds, on the rim
+            Where an offshore wind would carry you, on the rim
           </li>
           <li>
             <i
@@ -917,7 +917,7 @@ function KeyRose() {
       <path
         className="k-rose-needle"
         style={{ fill: `rgb(${windColor(16).join(",")})` }}
-        d="M0 -8L-2 -16.5L0 -15L2 -16.5Z"
+        d="M0 16.5L-2 8L0 9.5L2 8Z"
       />
     </svg>
   );

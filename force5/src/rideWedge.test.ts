@@ -301,17 +301,18 @@ describe("rideRose", () => {
 });
 
 describe("offshoreSpans", () => {
-  it("hatches what shoreAngle calls offshore and cross-offshore", () => {
+  it("hatches where the winds shoreAngle calls offshore and cross-offshore carry a rider", () => {
     const { offshore, crossOff } = offshoreSpans(DOLLY);
-    expect(offshore).toEqual({ from: 275, to: 335 });
+    expect(offshore).toEqual({ from: 95, to: 155 });
     expect(crossOff).toEqual([
-      { from: 235, to: 275 },
-      { from: 335, to: 375 },
+      { from: 55, to: 95 },
+      { from: 155, to: 195 },
     ]);
+    // A wind carries a rider to the bearing opposite the one it blows from.
     for (let b = offshore.from + 1; b < offshore.to; b++)
-      expect(shoreAngle(b, DOLLY)).toBe("offshore");
+      expect(shoreAngle((b + 180) % 360, DOLLY)).toBe("offshore");
     for (const s of crossOff)
       for (let b = s.from + 1; b < s.to; b++)
-        expect(shoreAngle(b % 360, DOLLY)).toBe("cross-off");
+        expect(shoreAngle((b + 180) % 360, DOLLY)).toBe("cross-off");
   });
 });

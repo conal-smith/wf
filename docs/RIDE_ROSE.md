@@ -30,8 +30,8 @@ foot ("NE 22 g27 · CROSS"). It is the mockup's recommended design
 | Reach | As home, labelled REACH | Both tacks where out and home mean nothing: a tapped point, a place with no facing, or an offshore wind |
 | Slow | A faint dotted arc along the rim, labelled SLOW in muted ink from 120 px | Downwind of both courses, past 120° off the wind each side: possible, but slow, so not drawn as course |
 | Drift | Dotted arrow straight downwind, labelled DRIFT. In red, with "OUT TO SEA", when the wind is cross-offshore or offshore | The wind's bearing + 180° |
-| Offshore | On the bezel: a dense red hatch where the wind is offshore, a light one where it is cross-offshore, a red arc outside, and the word OFFSHORE | `shoreAngle`'s bands (see below) and the spot's facing |
-| Needle | From outside the bezel in to the glass, at the wind's from-bearing, filled with the wind's colour (`PALETTE`) | The dock's hour |
+| Offshore | On the bezel, on the sea side: a dense red hatch where an offshore wind would carry a rider, a light one for cross-offshore, a red arc outside, and the word OFFSHORE | `shoreAngle`'s bands (see below) and the spot's facing |
+| Needle | From inside the glass out across the bezel, on the side the wind blows to, filled with the wind's colour (`PALETTE`) | The dock's hour |
 | Foot box | "SW 16 g22" in the rider's units (in Force, the wind's glyph and force and the gust's smaller, `BeaufortGlyph`'s drawing), then the shore relation: ON, CROSS-ON, CROSS, CROSS-OFF (red) or OFF (red). With no beach, the units | The dock's hour |
 
 The wind's colour appears only on the needle. The red accent is used only for

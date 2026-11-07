@@ -971,3 +971,14 @@ models' own runs, so a morning hour can differ from the chart's, which carries
 the finest run forward in the blend. With the rider's place known, Near you's
 map opens round them at `FOIL_FULL_ZOOM`, where the tidal depth is at full
 strength, not fitted to every spot within 30 km.
+
+**2026-11-07 — Every wind visual shows where the rider goes.** The owner:
+"offshore is going to blow you out to sea, onshore is going to blow you to the
+land. So it's the direction that you would move if you were windsurfing or wing
+foiling." Every arrow points the way the wind blows, and every dial shows where
+a rider would be carried: the offshore red on a loupe's rim stands on the sea
+side, and the stars page's dial has offshore on the sea and onshore on the land,
+as Settings does, with an arrow for each wind. The needle stands on that same side,
+pointing out across the rim, so an offshore wind's needle is in the red. Compass
+words stay the wind's own, "SW" for a wind from the south-west, as every forecast
+says it.

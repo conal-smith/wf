@@ -32,15 +32,16 @@ const MARGIN = 26;
 const BOX = R + MARGIN;
 
 /**
- * The loupe's needle, shorter: from just inside the rim to outside it, at
- * the bearing the wind comes from, pointing in.
+ * The loupe's needle, shorter: from just inside the rim to outside it, on the
+ * side the wind blows to, pointing out.
  */
 function needle(from: number) {
+  const to = from + 180;
   const p = (bearing: number, r: number) =>
     polar(bearing, r)
       .map((v) => v.toFixed(1))
       .join(" ");
-  return `M${p(from, R - 14)}L${p(from - 3.4, R + 24)}L${p(from, R + 17)}L${p(from + 3.4, R + 24)}Z`;
+  return `M${p(to, R + 24)}L${p(to - 4.2, R - 14)}L${p(to, R - 7)}L${p(to + 4.2, R - 14)}Z`;
 }
 
 const line = (l: { x1: number; y1: number; x2: number; y2: number }) => ({

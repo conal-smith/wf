@@ -238,7 +238,8 @@ export default function StarsPage() {
             What matters is the angle between the wind and the beach. Onshore
             wind blows straight in from the sea. Offshore wind blows straight
             out to sea, and that is the dangerous one: if you fall or break
-            something, it carries you away from land.
+            something, it carries you away from land. The arrows show where each
+            wind would carry you.
           </p>
           <Sectors width={width} />
           <ShoreTable rider={rider} />
@@ -688,9 +689,15 @@ const sectorStyles = tv({
     landWord: "fill-relief font-body text-label font-medium",
     beach: "fill-ink",
     beachWord: "fill-ink font-body text-label font-medium",
+    arrow: "fill-none stroke-ink",
   },
 });
 
+/**
+ * The beach from above, sea up and land down, as Settings draws it: each wind
+ * stands where it would carry a rider, an arrow its way, so offshore is out on
+ * the sea and onshore in on the land (the owner's ruling of 2026-11-07).
+ */
 function Sectors({ width }: { width: number }) {
   const c = sectorStyles();
   const R = 118;
@@ -702,12 +709,22 @@ function Sectors({ width }: { width: number }) {
   const cy = R + PAD;
   const H = 2 * (R + PAD);
   const D = Math.PI / 180;
+  // `a` is measured from straight onshore, which blows down onto the land.
   const pt = (a: number, r: number) =>
-    [cx + Math.sin(a * D) * r, cy - Math.cos(a * D) * r] as const;
+    [cx + Math.sin(a * D) * r, cy + Math.cos(a * D) * r] as const;
   const wedge = (a0: number, a1: number) => {
     const [x0, y0] = pt(a0, R);
     const [x1, y1] = pt(a1, R);
-    return `M${cx} ${cy}L${x0.toFixed(1)} ${y0.toFixed(1)}A${R} ${R} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)}Z`;
+    return `M${cx} ${cy}L${x0.toFixed(1)} ${y0.toFixed(1)}A${R} ${R} 0 0 0 ${x1.toFixed(1)} ${y1.toFixed(1)}Z`;
+  };
+  /** A wind's arrow, out from the beach the way it would carry a rider. */
+  const arrow = (a: number) => {
+    const [x0, y0] = pt(a, R * 0.8);
+    const [x1, y1] = pt(a, R * 0.97);
+    const [lx, ly] = pt(a - 3.5, R * 0.89);
+    const [rx, ry] = pt(a + 3.5, R * 0.89);
+    const n = (v: number) => v.toFixed(1);
+    return `M${n(x0)} ${n(y0)}L${n(x1)} ${n(y1)}M${n(lx)} ${n(ly)}L${n(x1)} ${n(y1)}L${n(rx)} ${n(ry)}`;
   };
   const size = Math.min(380, width);
   return (
@@ -717,7 +734,7 @@ function Sectors({ width }: { width: number }) {
       height={(size * H) / 320}
       viewBox={`0 0 320 ${H}`}
       role="img"
-      aria-label="The wind against the beach, measured from straight onshore: onshore within 30 degrees, cross-onshore 30 to 70, cross-shore 70 to 110, cross-offshore 110 to 150, offshore from 150 to 180, either side."
+      aria-label="Where each wind carries you from the beach, measured from straight onshore: onshore within 30 degrees, in to the land; cross-onshore 30 to 70; cross-shore 70 to 110, along the beach; cross-offshore 110 to 150; offshore from 150 to 180, out to sea."
       data-sectors
     >
       <rect
@@ -789,6 +806,19 @@ function Sectors({ width }: { width: number }) {
             {sector.name}
           </text>
         );
+      })}
+      {SECTORS.flatMap((sector) => {
+        const a = (sector.from + sector.to) / 2;
+        return (a === 0 || a === 180 ? [a] : [a, -a]).map((b) => (
+          <path
+            key={`${sector.name}-arrow-${b}`}
+            className={c.arrow()}
+            d={arrow(b)}
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        ));
       })}
       <text className={c.seaWord()} x={cx - R - 24} y={cy - R - 10}>
         Sea

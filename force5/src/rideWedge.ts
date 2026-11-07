@@ -252,17 +252,18 @@ export function rideRose(
 }
 
 /**
- * The wind directions that are offshore at a beach facing `facing`, and the
+ * Where an offshore wind carries a rider at a beach facing `facing`, and the
  * two cross-offshore spans either side, on shoreAngle's bands (./stars): the
- * offshore within 30° of straight off the beach, cross-off from 30° to 70°.
+ * bearings within 30° of straight out to sea, cross-off from 30° to 70°. The
+ * dial shows where a rider goes, so this is the sea side, not the wind's own
+ * bearing (the owner's ruling of 2026-11-07).
  */
 export function offshoreSpans(facing: number): {
   offshore: Span;
   crossOff: [Span, Span];
 } {
-  const off = facing + 180;
   const at = (a: number, b: number): Span => {
-    const from = norm(off + a);
+    const from = norm(facing + a);
     return { from, to: from + (b - a) };
   };
   return {

@@ -88,15 +88,16 @@ export function PhotoLoupe({
   const needle = loupe
     ? (() => {
         const k = card ? 1.5 : 1;
-        const [tx, ty] = polar(loupe.rose.windFrom, R - 30 * k);
-        const [ax, ay] = polar(loupe.rose.windFrom - 7, R + 30 * k);
-        const [bx, by] = polar(loupe.rose.windFrom + 7, R + 30 * k);
-        const [nx, ny] = polar(loupe.rose.windFrom, R + 20 * k);
+        const to = loupe.rose.windFrom + 180;
+        const [tx, ty] = polar(to, R + 30 * k);
+        const [ax, ay] = polar(to - 9, R - 30 * k);
+        const [bx, by] = polar(to + 9, R - 30 * k);
+        const [nx, ny] = polar(to, R - 20 * k);
         return `M${f1(tx)} ${f1(ty)}L${f1(ax)} ${f1(ay)}L${f1(nx)} ${f1(ny)}L${f1(bx)} ${f1(by)}Z`;
       })()
     : null;
   const offshoreMid =
-    facing === null ? null : polar(facing + 180, R + LOUPE_BAND + 26);
+    facing === null ? null : polar(facing, R + LOUPE_BAND + 26);
   return (
     <figure
       className={s.root({ className })}
